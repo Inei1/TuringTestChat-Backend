@@ -1,11 +1,7 @@
 import * as bodyParser from 'body-parser';
-import EditorController from '../controllers/EditorController';
 import { Server } from '@overnightjs/core';
 import logger from 'jet-logger';
-import UserController from '../controllers/UserController';
-import AuthController from '../controllers/AuthController';
-import GamesController from '../controllers/GamesController';
-import { connectToDatabase } from '../controllers/connectToDatabase';
+import ChatController from '../controllers/ChatController';
 var https = require('https');
 var http = require('http');
 import { readFileSync } from 'fs';
@@ -16,12 +12,10 @@ class EditorServer extends Server {
     'No front-end content is being served.';
 
   constructor() {
-    connectToDatabase().then((collections) => globalThis.collections = collections);
-    globalThis.refreshTokens = [];
     super(true);
     this.app.use(bodyParser.json());
     this.app.use(bodyParser.urlencoded({ extended: true }));
-    super.addControllers([new EditorController(), new UserController(), new AuthController(), new GamesController()]);
+    super.addControllers([new ChatController()]);
     if (process.env.NODE_ENV === 'test') {
       logger.info('Starting server in development mode');
       const msg = this.DEV_MSG + process.env.EXPRESS_PORT;
