@@ -6,7 +6,7 @@ var https = require('https');
 var http = require('http');
 import { readFileSync } from 'fs';
 
-class EditorServer extends Server {
+class ChatServer extends Server {
 
   private readonly DEV_MSG = 'Express Server is running in development mode. ' +
     'No front-end content is being served.';
@@ -41,4 +41,4 @@ class EditorServer extends Server {
   }
 }
 
-export default EditorServer;
+export default ChatServer;
