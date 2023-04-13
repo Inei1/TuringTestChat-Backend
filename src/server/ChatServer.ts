@@ -1,12 +1,17 @@
 import * as bodyParser from 'body-parser';
 import { Server } from '@overnightjs/core';
+import { Server as SocketServer } from 'socket.io';
 import logger from 'jet-logger';
 import ChatController from '../controllers/ChatController';
 var https = require('https');
 var http = require('http');
 import { readFileSync } from 'fs';
+const cors = require('cors');
 
 class ChatServer extends Server {
+
+  chatRoom = '';
+  allUsers: any[] = [];
 
   private readonly DEV_MSG = 'Express Server is running in development mode. ' +
     'No front-end content is being served.';
@@ -15,6 +20,7 @@ class ChatServer extends Server {
     super(true);
     this.app.use(bodyParser.json());
     this.app.use(bodyParser.urlencoded({ extended: true }));
+    this.app.use(cors());
     super.addControllers([new ChatController()]);
     if (process.env.NODE_ENV === 'test') {
       logger.info('Starting server in development mode');
@@ -29,15 +35,44 @@ class ChatServer extends Server {
   }
 
   public startHttps(port: number): void {
-    https.createServer(this.app).listen(port, () => {
+    const httpsServer = https.createServer(this.app).listen(port, () => {
       logger.imp("Started https server on port " + port);
     });
   }
 
   public startHttp(port: number): void {
-    http.createServer(this.app).listen(port, () => {
-      logger.imp("Started http server on port " + port)
-    })
+    const httpServer = http.createServer(this.app);
+    const io = new SocketServer(httpServer, {
+      cors: {
+        origin: "http://localhost:3000",
+        methods: ["GET", "POST"],
+      }
+    });
+
+    io.on("connection", (socket) => {
+      logger.info("User connected: " + socket.id);
+
+      socket.on("message", (data) => {
+        console.log(data.text);
+        io.emit("messageResponse", data);
+      });
+
+      socket.on("newUser", (data) => {
+        this.allUsers.push(data);
+        io.emit("newUserResponse", this.allUsers);
+      });
+
+      socket.on("disconnect", () => {
+        logger.info("disconnected");
+        this.allUsers = this.allUsers.filter((user: any) => user.socketId !== socket.id);
+        io.emit("newUserResponse", this.allUsers);
+        socket.disconnect();
+      });
+    });
+
+    httpServer.listen(port, () => {
+      logger.imp("Started http server on port " + port);
+    });
   }
 }
 
