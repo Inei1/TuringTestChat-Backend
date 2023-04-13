@@ -56,6 +56,8 @@ class ChatServer extends Server {
         io.emit("messageResponse", data);
       });
 
+      socket.on("typing", (data) => socket.broadcast.emit("typingResponse", data));
+
       socket.on("newUser", (data) => {
         this.allUsers.push(data);
         io.emit("newUserResponse", this.allUsers);
