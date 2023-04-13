@@ -53,7 +53,6 @@ class ChatServer extends Server {
       logger.info("User connected: " + socket.id);
 
       socket.on("message", (data) => {
-        console.log(data.text);
         io.emit("messageResponse", data);
       });
 
@@ -63,9 +62,9 @@ class ChatServer extends Server {
       });
 
       socket.on("disconnect", () => {
-        logger.info("disconnected");
         this.allUsers = this.allUsers.filter((user: any) => user.socketId !== socket.id);
         io.emit("newUserResponse", this.allUsers);
+        logger.info("User disconnected: " + socket.id);
         socket.disconnect();
       });
     });
