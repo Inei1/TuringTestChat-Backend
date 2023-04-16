@@ -52,6 +52,7 @@
     "jet-logger": "^1.2.6",
     "jsonwebtoken": "^9.0.0",
     "mongodb": "^5.0.1",
+    "openai": "^3.2.1",
     "pg": "^8.8.0",
     "secure-random": "^1.1.2",
     "socket.io": "^4.6.1"
