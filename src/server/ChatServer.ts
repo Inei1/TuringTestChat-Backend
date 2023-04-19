@@ -2,13 +2,23 @@ import * as bodyParser from 'body-parser';
 import { Server } from '@overnightjs/core';
 import { Server as SocketServer } from 'socket.io';
 import logger from 'jet-logger';
-import ChatController from '../controllers/ChatController';
 var https = require('https');
 var http = require('http');
 import { readFileSync } from 'fs';
 import cors = require('cors');
 import { Configuration, OpenAIApi } from 'openai';
 import * as dotenv from 'dotenv';
+import { connectToDatabase } from './connectToDatabase';
+import * as passport from 'passport';
+import * as session from 'express-session';
+import LoginController from '../controllers/LoginController';
+import AccountController from '../controllers/AccountController';
+import * as passportLocal from "passport-local";
+import { ObjectId } from "mongodb";
+import * as bcrypt from "bcrypt";
+import MongoStore = require('connect-mongo');
+
+const LocalStrategy = passportLocal.Strategy;
 
 dotenv.config();
 
@@ -41,10 +51,55 @@ class ChatServer extends Server {
 
   constructor() {
     super(true);
+    this.app.use(session({
+      store: MongoStore.create({ mongoUrl: process.env.DB_CONN_STRING }),
+      secret: process.env.EXPRESS_SESSION_SECRET!,
+      resave: false,
+      saveUninitialized: true,
+      cookie: { maxAge: 60 * 15 * 1000, secure: false } // 15 minutes
+    }));
+    connectToDatabase().then((collections) => globalThis.collections = collections);
     this.app.use(bodyParser.json());
     this.app.use(bodyParser.urlencoded({ extended: true }));
     this.app.use(cors());
-    super.addControllers([new ChatController()]);
+
+    passport.serializeUser((user, done) => {
+      done(undefined, user);
+    });
+
+    passport.deserializeUser((id: ObjectId, done) => {
+      try {
+        globalThis.collections.users?.findOne({ _id: id }).then((user) => {
+          done(undefined, user);
+        });
+      } catch (err) {
+        done(err, undefined);
+      }
+    });
+
+    passport.use(new LocalStrategy({ usernameField: "username", passwordField: "password" }, (username, password, done) => {
+      try {
+        globalThis.collections.users?.findOne({ username: username.toLowerCase() }).then((user) => {
+          if (!user) {
+            return done(undefined, false, { message: `User ${username} not found` });
+          }
+          bcrypt.compare(password, user.password).then((valid) => {
+            if (valid) {
+              return done(undefined, user);
+            } else {
+              return done(undefined, false, { message: "Invalid username or password" });
+            }
+          })
+        });
+      } catch (err) {
+        return done(err);
+      }
+    }));
+
+    this.app.use(passport.initialize());
+    this.app.use(passport.session());
+
+    super.addControllers([new LoginController(), new AccountController()]);
     if (process.env.NODE_ENV === 'test') {
       logger.info('Starting server in development mode');
       const msg = this.DEV_MSG + process.env.EXPRESS_PORT;
@@ -85,7 +140,7 @@ class ChatServer extends Server {
         });
         setTimeout(() => io.emit("typingResponse", "user2"), 100);
         const message = completion.data.choices[0].message?.content;
-        
+
         setTimeout(() => io.emit("messageResponse", {
           name: "user2",
           text: completion.data.choices[0].message?.content
