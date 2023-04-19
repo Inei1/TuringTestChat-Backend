@@ -1,13 +1,26 @@
-import { Controller, Post } from "@overnightjs/core";
+import { Controller, Middleware, Post } from "@overnightjs/core";
 import { Request, Response } from 'express';
 import * as bcrypt from 'bcrypt';
 import { StatusCodes } from "http-status-codes";
+import { check, validationResult } from "express-validator";
 
 @Controller('account')
 class AccountController {
 
   @Post("register")
+  @Middleware([
+    check("username").isLength({ min: 6 }).withMessage("Username must be at least 6 characters long").escape(),
+    check("password").isLength({ min: 6 }).withMessage("Password must be at least 6 characters long").escape(),
+    check("email").isEmail().withMessage("Invalid email address").escape()
+  ])
   private async registerUser(req: Request, res: Response) {
+    const result = validationResult(req);
+    if (!result.isEmpty()) {
+      return res.status(StatusCodes.BAD_REQUEST).json({
+        message: result,
+        succeeded: false,
+      });
+    }
     try {
       const hashedPassword = await bcrypt.hash(req.body.password, 10);
       const updateInfo = await collections.users?.updateOne(
