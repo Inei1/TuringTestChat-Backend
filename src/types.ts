@@ -10,3 +10,8 @@ export interface UserElements {
   points: number;
   tokens: AuthToken[];
 }
+
+export interface WaitlistElements {
+  email: string;
+  date: number;
+}

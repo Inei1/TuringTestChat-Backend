@@ -7,6 +7,46 @@ import { check, validationResult } from "express-validator";
 @Controller('account')
 class AccountController {
 
+  @Post("waitlist")
+  @Middleware([check("email").isEmail().withMessage("Invalid email address").escape()])
+  private async addToWaitlist(req: Request, res: Response) {
+    const result = validationResult(req);
+    if (!result.isEmpty()) {
+      return res.status(StatusCodes.BAD_REQUEST).json({
+        message: "Invalid email",
+        succeeded: false,
+      })
+    }
+    try {
+      const updateInfo = await collections.waitlist?.updateOne(
+        { email: req.body.email },
+        {
+          $setOnInsert: {
+            email: req.body.email,
+            timestamp: Date.now(),
+          }
+        },
+        { upsert: true });
+      if (updateInfo?.upsertedCount! > 0) {
+        return res.status(StatusCodes.OK).json({
+          message: "Subscribed to waitlist",
+          succeeded: true,
+        });
+      } else {
+        return res.status(StatusCodes.CONFLICT).json({
+          message: "This email is already added to the waitlist",
+          succeeded: false,
+        });
+      }
+    } catch (error) {
+      console.error(error);
+      return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+        message: "An unknown error occurred",
+        succeeded: false,
+      });
+    }
+  }
+
   @Post("register")
   @Middleware([
     check("username").isLength({ min: 6 }).withMessage("Username must be at least 6 characters long").escape(),
