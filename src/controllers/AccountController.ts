@@ -18,7 +18,7 @@ class AccountController {
       })
     }
     try {
-      const updateInfo = await collections.waitlist?.updateOne(
+      const updateInfo = await globalThis.collections.waitlist?.updateOne(
         { email: req.body.email },
         {
           $setOnInsert: {
@@ -64,7 +64,7 @@ class AccountController {
     }
     try {
       const hashedPassword = await bcrypt.hash(req.body.password, 10);
-      const updateInfo = await collections.users?.updateOne(
+      const updateInfo = await globalThis.collections.users?.updateOne(
         { $or: [{ username: req.body.username }, { email: req.body.email }] },
         {
           $setOnInsert: {
