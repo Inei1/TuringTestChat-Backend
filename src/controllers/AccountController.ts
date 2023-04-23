@@ -23,6 +23,7 @@ class AccountController {
         {
           $setOnInsert: {
             email: req.body.email,
+            comment: req.body.comment,
             timestamp: Date.now(),
           }
         },
