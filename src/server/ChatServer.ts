@@ -31,6 +31,7 @@ class ChatServer extends Server {
     apiKey: this.apiKey,
   });
   openai = new OpenAIApi(this.config);
+  // need to optimize this
   messages: any[] = [{ role: "system", content: "You are trying to convince the person on the other side that you are a human." }];
   isBot = true;
   wordsPerSecond = 20;
