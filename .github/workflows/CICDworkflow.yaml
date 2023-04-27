@@ -1,4 +1,3 @@
-# cicd test again 2
 name: TTC CI/CD
 on:
   push:
