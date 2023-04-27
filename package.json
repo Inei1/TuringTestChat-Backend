@@ -32,7 +32,7 @@
     "@types/express-session": "^1.17.7",
     "@types/jsonwebtoken": "^9.0.1",
     "@types/lodash": "^4.14.194",
-    "@types/node": "^18.11.18",
+    "@types/node": "^18.16.1",
     "@types/passport": "^1.0.12",
     "@types/passport-local": "^1.0.35",
     "@types/pg": "^8.6.6",
@@ -44,6 +44,7 @@
   },
   "dependencies": {
     "@overnightjs/core": "^1.7.6",
+    "aws-sdk": "^2.1366.0",
     "axios": "^1.2.5",
     "bcrypt": "^5.1.0",
     "body-parser": "^1.20.2",
@@ -64,6 +65,7 @@
     "passport": "^0.6.0",
     "passport-local": "^1.0.0",
     "pg": "^8.8.0",
+    "quickemailverification": "^1.0.3",
     "secure-random": "^1.1.2",
     "socket.io": "^4.6.1"
   }

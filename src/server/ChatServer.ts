@@ -17,6 +17,7 @@ import * as passportLocal from "passport-local";
 import { ObjectId } from "mongodb";
 import * as bcrypt from "bcrypt";
 import MongoStore = require('connect-mongo');
+import * as AWS from "aws-sdk";
 
 const LocalStrategy = passportLocal.Strategy;
 
@@ -98,6 +99,11 @@ class ChatServer extends Server {
 
     this.app.use(passport.initialize());
     this.app.use(passport.session());
+
+    AWS.config.update({
+      region: "us-west-1",
+      credentials: { accessKeyId: process.env.AWS_ACCESS_KEY!, secretAccessKey: process.env.AWS_SECRET_KEY! }
+    });
 
     super.addControllers([new LoginController(), new AccountController()]);
     if (process.env.NODE_ENV === 'test') {
