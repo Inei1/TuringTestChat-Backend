@@ -1,5 +1,4 @@
 #!/bin/bash
-sudo rm -rf /home/ubuntu/temp
 mkdir /home/ubuntu/temp
 cd /home/ubuntu/temp
 rm -rf /home/ubuntu/ttc-backend
