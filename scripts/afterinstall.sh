@@ -13,5 +13,5 @@ cp /home/ubuntu/.env /home/ubuntu/temp/build/
 cd /home/ubuntu/temp/build/
 sudo npm i --omit=dev
 cd /home/ubuntu
-sudo mv /home/ubuntu/temp/build /home/ubuntu/ttc-backend
-sudo rm -rf /home/ubuntu/temp/
+mv /home/ubuntu/temp/build /home/ubuntu/ttc-backend
+# sudo rm -rf /home/ubuntu/temp/
