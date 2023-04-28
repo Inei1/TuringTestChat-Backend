@@ -51,47 +51,52 @@ class AccountController {
         { upsert: true });
       if (updateInfo?.upsertedCount! > 0) {
 
-        await new SESv2Client({
-          credentials: {
-            accessKeyId: process.env.AWS_ACCESS_KEY!,
-            secretAccessKey: process.env.AWS_SECRET_KEY!,
-          },
-          apiVersion: "2019-09-27",
-          region: "us-east-1"
-        }).send(new SendEmailCommand({
-          Destination: {
-            ToAddresses: [
-              req.body.email,
-            ]
-          },
-          Content: {
-            Simple: {
-              Body: {
-                Html: {
-                  Charset: "UTF-8",
-                  Data: "<html><p>Thank you for subscribing to the TuringTestChat waitlist!<br/><br/> You'll be the first to know when the beta releases. If you wish to receive weekly updates, you can use the link at the bottom of this email to subscribe. If you have any questions, feel free to reply to this email.<br/><br/> - TuringTestChat<br/><a href={{amazonSESUnsubscribeUrl}}>Click here to manage subscriptions</a></p></html>"
+        try {
+          const result = await new SESv2Client({
+            credentials: {
+              accessKeyId: process.env.AWS_ACCESS_KEY!,
+              secretAccessKey: process.env.AWS_SECRET_KEY!,
+            },
+            apiVersion: "2019-09-27",
+            region: "us-east-1"
+          }).send(new SendEmailCommand({
+            Destination: {
+              ToAddresses: [
+                req.body.email,
+              ]
+            },
+            Content: {
+              Simple: {
+                Body: {
+                  Html: {
+                    Charset: "UTF-8",
+                    Data: "<html><p>Thank you for subscribing to the TuringTestChat waitlist!<br/><br/> You'll be the first to know when the beta releases. If you wish to receive weekly updates, you can use the link at the bottom of this email to subscribe. If you have any questions, feel free to reply to this email.<br/><br/> - TuringTestChat<br/><a href={{amazonSESUnsubscribeUrl}}>Click here to manage subscriptions</a></p></html>"
+                  },
+                  Text: {
+                    Charset: "UTF-8",
+                    Data: "Thank you for subscribing to the TuringTestChat waitlist!\n\n You'll be the first to know when the beta releases. If you wish to receive weekly updates, you can use the link at the bottom of this email to subscribe. If you have any questions, feel free to reply to this email.\n\n - TuringTestChat\n{{amazonSESUnsubscribeUrl}}"
+                  }
                 },
-                Text: {
+                Subject: {
                   Charset: "UTF-8",
-                  Data: "Thank you for subscribing to the TuringTestChat waitlist!\n\n You'll be the first to know when the beta releases. If you wish to receive weekly updates, you can use the link at the bottom of this email to subscribe. If you have any questions, feel free to reply to this email.\n\n - TuringTestChat\n{{amazonSESUnsubscribeUrl}}"
+                  Data: "Welcome to the TuringTestChat waitlist"
                 }
-              },
-              Subject: {
-                Charset: "UTF-8",
-                Data: "Welcome to the TuringTestChat waitlist"
               }
-            }
-          },
-          ListManagementOptions: {
-            TopicName: "Waitlist",
-            ContactListName: "TuringTestChat"
-          },
-          FeedbackForwardingEmailAddress: "support@turingtestchat.com",
-          FromEmailAddress: "ttc@turingtestchat.com",
-          ReplyToAddresses: [
-            "support@turingtestchat.com"
-          ]
-        }));
+            },
+            ListManagementOptions: {
+              TopicName: "Waitlist",
+              ContactListName: "TuringTestChat"
+            },
+            FeedbackForwardingEmailAddress: "support@turingtestchat.com",
+            FromEmailAddress: "ttc@turingtestchat.com",
+            ReplyToAddresses: [
+              "support@turingtestchat.com"
+            ]
+          }));
+          console.log(result);
+        } catch (err) {
+          logger.err(err);
+        }
         return res.status(StatusCodes.OK).json({
           message: "Subscribed to waitlist",
           succeeded: true,
