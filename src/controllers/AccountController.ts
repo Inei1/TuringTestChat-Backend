@@ -52,7 +52,6 @@ class AccountController {
       if (updateInfo?.upsertedCount! > 0) {
 
         try {
-          logger.info("email start");
           const result = await new SESv2Client({
             credentials: {
               accessKeyId: process.env.AWS_ACCESS_KEY!,
@@ -71,11 +70,11 @@ class AccountController {
                 Body: {
                   Html: {
                     Charset: "UTF-8",
-                    Data: "<html><p>Thank you for subscribing to the TuringTestChat waitlist!<br/><br/> You'll be the first to know when the beta releases. If you wish to receive weekly updates, you can use the link at the bottom of this email to subscribe. If you have any questions, feel free to reply to this email.<br/><br/> - TuringTestChat<br/><a href={{amazonSESUnsubscribeUrl}}>Click here to manage subscriptions</a></p></html>"
+                    Data: "<html><p>Thank you for subscribing to the TuringTestChat waitlist!<br/><br/> You'll be the first to know when the beta releases. You will receive weekly updates, and you can use the link at the bottom of this email to manage subscriptions. If you have any questions, feel free to reply to this email.<br/><br/> - TuringTestChat<br/><a href={{amazonSESUnsubscribeUrl}}>Click here to unsubscribe</a></p></html>"
                   },
                   Text: {
                     Charset: "UTF-8",
-                    Data: "Thank you for subscribing to the TuringTestChat waitlist!\n\n You'll be the first to know when the beta releases. If you wish to receive weekly updates, you can use the link at the bottom of this email to subscribe. If you have any questions, feel free to reply to this email.\n\n - TuringTestChat\n{{amazonSESUnsubscribeUrl}}"
+                    Data: "Thank you for subscribing to the TuringTestChat waitlist!\n\n You'll be the first to know when the beta releases. You will receive weekly updates, and you can use the link at the bottom of this email to manage subscriptions. If you have any questions, feel free to reply to this email.\n\n - TuringTestChat\n{{amazonSESUnsubscribeUrl}}"
                   }
                 },
                 Subject: {
@@ -94,7 +93,7 @@ class AccountController {
               "support@turingtestchat.com"
             ]
           }));
-          logger.info(result);
+          logger.info(result.MessageId);
         } catch (err) {
           logger.err(err);
         }
