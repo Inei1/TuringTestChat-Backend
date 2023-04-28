@@ -52,6 +52,7 @@ class AccountController {
       if (updateInfo?.upsertedCount! > 0) {
 
         try {
+          logger.info("email start");
           const result = await new SESv2Client({
             credentials: {
               accessKeyId: process.env.AWS_ACCESS_KEY!,
@@ -93,7 +94,7 @@ class AccountController {
               "support@turingtestchat.com"
             ]
           }));
-          console.log(result);
+          logger.info(result);
         } catch (err) {
           logger.err(err);
         }
