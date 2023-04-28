@@ -52,6 +52,10 @@ class AccountController {
       if (updateInfo?.upsertedCount! > 0) {
 
         await new SESv2Client({
+          credentials: {
+            accessKeyId: process.env.AWS_ACCESS_KEY!,
+            secretAccessKey: process.env.AWS_SECRET_KEY!,
+          },
           apiVersion: "2019-09-27",
           region: "us-east-1"
         }).send(new SendEmailCommand({
