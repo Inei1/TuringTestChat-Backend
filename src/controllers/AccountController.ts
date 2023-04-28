@@ -5,7 +5,7 @@ import { StatusCodes } from "http-status-codes";
 import { check, validationResult } from "express-validator";
 // import * as AWS from "aws-sdk";
 import logger from "jet-logger";
-//var quickemailverification = require('quickemailverification');
+var quickemailverification = require('quickemailverification');
 
 @Controller('account')
 class AccountController {
@@ -23,18 +23,18 @@ class AccountController {
 
     let verification = "";
 
-    // quickemailverification.client(process.env.QEV_API_KEY).quickemailverification().verify(
-    //   req.body.email, (err: any, response: any) => {
-    //     console.log(err);
-    //     console.log(response);
-    //     verification = response.body.result;
-    //   });
-    // if (verification !== "valid") {
-    //   return res.status(StatusCodes.BAD_REQUEST).json({
-    //     message: "Email failed verification, please check that it was entered correctly.",
-    //     succeeded: false,
-    //   })
-    // }
+    quickemailverification.client(process.env.QEV_API_KEY).quickemailverification().verify(
+      req.body.email, (err: any, response: any) => {
+        console.log(err);
+        console.log(response);
+        verification = response.body.result;
+      });
+    if (verification !== "valid") {
+      return res.status(StatusCodes.BAD_REQUEST).json({
+        message: "Email failed verification, please check that it was entered correctly.",
+        succeeded: false,
+      })
+    }
 
     try {
       const updateInfo = await globalThis.collections.waitlist?.updateOne(
