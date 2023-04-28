@@ -3,7 +3,7 @@ import { Request, Response } from 'express';
 import bcrypt from 'bcrypt';
 import { StatusCodes } from "http-status-codes";
 import { check, validationResult } from "express-validator";
-import SESV2 from "aws-sdk/clients/sesv2";
+import { SESv2Client, SendEmailCommand } from "@aws-sdk/client-sesv2";
 import logger from "jet-logger";
 var quickemailverification = require('quickemailverification');
 
@@ -51,9 +51,10 @@ class AccountController {
         { upsert: true });
       if (updateInfo?.upsertedCount! > 0) {
 
-        new SESV2({
-          apiVersion: "2019-09-27"
-        }).sendEmail({
+        await new SESv2Client({
+          apiVersion: "2019-09-27",
+          region: "us-east-1"
+        }).send(new SendEmailCommand({
           Destination: {
             ToAddresses: [
               req.body.email,
@@ -86,7 +87,7 @@ class AccountController {
           ReplyToAddresses: [
             "support@turingtestchat.com"
           ]
-        }, (err, data) => logger.info("data: " + data + " " + "err: " + err));
+        }));
         return res.status(StatusCodes.OK).json({
           message: "Subscribed to waitlist",
           succeeded: true,
