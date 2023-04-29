@@ -5,6 +5,7 @@ export interface AuthToken {
 
 export interface UserElements {
   user: string;
+  profileImage: string;
   password: string;
   email: string;
   points: number;
