@@ -17,15 +17,29 @@ import * as passportLocal from "passport-local";
 import { ObjectId } from "mongodb";
 import * as bcrypt from "bcrypt";
 import MongoStore = require('connect-mongo');
+import { randomUUID } from 'crypto';
 
 const LocalStrategy = passportLocal.Strategy;
 
 dotenv.config();
 
+export interface ChatUser {
+  name: string;
+  bot: boolean;
+  result: string | null;
+  ready: boolean;
+}
+
+export interface ChatRoom {
+  active: boolean;
+  user1: ChatUser;
+  user2: ChatUser | null;
+}
+
 class ChatServer extends Server {
 
-  chatRoom = '';
-  allUsers: any[] = [];
+  roomsMap: Map<string, ChatRoom> = new Map<string, ChatRoom>;
+  emptyRooms: string[] = [];
   apiKey = process.env.OPENAI_API_KEY;
   config = new Configuration({
     apiKey: this.apiKey,
@@ -33,7 +47,6 @@ class ChatServer extends Server {
   openai = new OpenAIApi(this.config);
   // need to optimize this
   messages: any[] = [{ role: "system", content: "You are trying to convince the person on the other side that you are a human." }];
-  isBot = true;
   wordsPerSecond = 20;
   // make between 30-80 wpm (0.5-1.33), weighted more to low numbers
 
@@ -130,34 +143,155 @@ class ChatServer extends Server {
     io.on("connection", (socket) => {
       logger.info("User connected: " + socket.id);
 
+      socket.on("startRoom", (username) => {
+        if (this.emptyRooms.length > 0) {
+          const roomId = this.emptyRooms.pop()!
+          const room = this.roomsMap.get(roomId);
+          room!.user2 = { name: username, bot: false, result: null, ready: false };
+          socket.join(roomId);
+          logger.info("Room joined: " + roomId);
+          this.roomsMap.set(roomId, room!);
+          socket.emit("roomFound", { roomId: roomId });
+          io.to(roomId).emit("foundChat");
+        } else {
+          const roomId = randomUUID();
+          this.roomsMap.set(roomId, {
+            user1: { name: username, bot: false, result: null, ready: false },
+            user2: null,
+            active: false
+          });
+          this.emptyRooms.push(roomId);
+          socket.join(roomId);
+          socket.emit("roomFound", { roomId: roomId });
+          logger.info("Room created: " + roomId);
+        }
+      });
+
       socket.on("message", async (data) => {
         io.emit("messageResponse", data);
 
-        this.convertMessage(data);
-        const completion = await this.openai.createChatCompletion({
-          model: "gpt-3.5-turbo",
-          messages: this.messages,
-        });
-        setTimeout(() => io.emit("typingResponse", "user2"), 100);
-        const message = completion.data.choices[0].message?.content;
+        // this.convertMessage(data);
+        // const completion = await this.openai.createChatCompletion({
+        //   model: "gpt-3.5-turbo",
+        //   messages: this.messages,
+        // });
+        // setTimeout(() => io.emit("typingResponse", "user2"), 100);
+        // const message = completion.data.choices[0].message?.content;
 
-        setTimeout(() => io.emit("messageResponse", {
-          name: "user2",
-          text: completion.data.choices[0].message?.content
-        }), (message?.length! / this.wordsPerSecond) * 1000);
-        io.emit("typingResponse", "");
+        // setTimeout(() => io.emit("messageResponse", {
+        //   name: "user2",
+        //   text: completion.data.choices[0].message?.content
+        // }), (message?.length! / this.wordsPerSecond) * 1000);
+        // io.emit("typingResponse", "");
       });
 
+      socket.on("result", async (data) => {
+        // authenticate user and socket
+        console.log(data);
+        let otherPoints = 0;
+        let selfPoints = 0;
+        const room = this.roomsMap.get(data.roomId);
+        if (data.name === room?.user1) {
+          if (!room?.user2?.bot) {
+            if (data.result === "DefinitelyHuman") {
+              otherPoints = -3;
+              selfPoints = 10;
+            } else if (data.result === "PossiblyHuman") {
+              otherPoints = -1;
+              selfPoints = 4;
+            } else if (data.result === "Unknown") {
+              otherPoints = 1;
+              selfPoints = 0;
+            } else if (data.result === "ProbablyBot") {
+              otherPoints = 4;
+              selfPoints = -1;
+            } else {
+              otherPoints = 10;
+              selfPoints = -3;
+            }
+          } else {
+            if (data.result === "DefinitelyHuman") {
+              otherPoints = 10;
+              selfPoints = -3;
+            } else if (data.result === "PossiblyHuman") {
+              otherPoints = 4;
+              selfPoints = -1;
+            } else if (data.result === "Unknown") {
+              otherPoints = 1;
+              selfPoints = 0;
+            } else if (data.result === "ProbablyBot") {
+              otherPoints = -1;
+              selfPoints = 4;
+            } else {
+              otherPoints = -3;
+              selfPoints = 10;
+            }
+          }
+          if (room?.user2?.result) {
+            io.socketsLeave(data.roomId);
+          }
+          room!.user1.result = data.result;
+        } else {
+          if (!room?.user2?.bot) {
+            if (data.result === "DefinitelyHuman") {
+              otherPoints = -3;
+              selfPoints = 10;
+            } else if (data.result === "PossiblyHuman") {
+              otherPoints = -1;
+              selfPoints = 4;
+            } else if (data.result === "Unknown") {
+              otherPoints = 1;
+              selfPoints = 0;
+            } else if (data.result === "ProbablyBot") {
+              otherPoints = 4;
+              selfPoints = -1;
+            } else {
+              otherPoints = 10;
+              selfPoints = -3;
+            }
+          } else {
+            if (data.result === "DefinitelyHuman") {
+              otherPoints = 10;
+              selfPoints = -3;
+            } else if (data.result === "PossiblyHuman") {
+              otherPoints = 4;
+              selfPoints = -1;
+            } else if (data.result === "Unknown") {
+              otherPoints = 1;
+              selfPoints = 0;
+            } else if (data.result === "ProbablyBot") {
+              otherPoints = -1;
+              selfPoints = 4;
+            } else {
+              otherPoints = -3;
+              selfPoints = 10;
+            }
+          }
+          if (room?.user1?.result) {
+            io.socketsLeave(data.roomId);
+          }
+          room!.user2!.result = data.result;
+        }
+        socket.emit("selfResult", {
+          points: selfPoints
+        });
+        socket.broadcast.emit("otherResult", {
+          result: data.result,
+          points: otherPoints
+        });
+      });
       socket.on("typing", (data) => socket.broadcast.emit("typingResponse", data));
 
-      socket.on("newUser", (data) => {
-        this.allUsers.push(data);
-        io.emit("newUserResponse", this.allUsers);
+      socket.on("readyChat", (data) => {
+        const room = this.roomsMap.get(data.roomId);
+        if (room?.user1.name === data.user) {
+          room!.user1.ready = true;
+        } else if (room?.user2?.name === data.user) {{
+          room!.user2!.ready = true;
+        }}
       });
 
       socket.on("disconnect", () => {
-        this.allUsers = this.allUsers.filter((user: any) => user.socketId !== socket.id);
-        io.emit("newUserResponse", this.allUsers);
         logger.info("User disconnected: " + socket.id);
         socket.disconnect();
       });
