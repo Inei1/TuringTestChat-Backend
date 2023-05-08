@@ -23,22 +23,8 @@ const LocalStrategy = passportLocal.Strategy;
 
 dotenv.config();
 
-export interface ChatUser {
-  name: string;
-  bot: boolean;
-  result: string | null;
-  ready: boolean;
-}
-
-export interface ChatRoom {
-  active: boolean;
-  user1: ChatUser;
-  user2: ChatUser | null;
-}
-
 class ChatServer extends Server {
 
-  roomsMap: Map<string, ChatRoom> = new Map<string, ChatRoom>;
   emptyRooms: string[] = [];
   apiKey = process.env.OPENAI_API_KEY;
   config = new Configuration({
@@ -142,24 +128,30 @@ class ChatServer extends Server {
 
     io.on("connection", (socket) => {
       logger.info("User connected: " + socket.id);
-
-      socket.on("startRoom", (username) => {
+      socket.on("startRoom", async (username) => {
         if (this.emptyRooms.length > 0) {
           const roomId = this.emptyRooms.pop()!
-          const room = this.roomsMap.get(roomId);
-          room!.user2 = { name: username, bot: false, result: null, ready: false };
+          await globalThis.collections.chatSessions?.updateOne(
+            { id: roomId },
+            { $set: { user2: { name: username, bot: false, result: null, ready: false } } }
+          );
           socket.join(roomId);
           logger.info("Room joined: " + roomId);
-          this.roomsMap.set(roomId, room!);
           socket.emit("roomFound", { roomId: roomId });
           io.to(roomId).emit("foundChat");
         } else {
           const roomId = randomUUID();
-          this.roomsMap.set(roomId, {
-            user1: { name: username, bot: false, result: null, ready: false },
-            user2: null,
-            active: false
-          });
+          try {
+            await globalThis.collections.chatSessions?.insertOne(
+              {
+                id: roomId,
+                messages: [],
+                user1: { name: username, bot: false, result: null, ready: false },
+                user2: { name: "", bot: false, result: null, ready: false }
+              });
+          } catch (error) {
+            console.error(error);
+          }
           this.emptyRooms.push(roomId);
           socket.join(roomId);
           socket.emit("roomFound", { roomId: roomId });
@@ -169,6 +161,10 @@ class ChatServer extends Server {
 
       socket.on("message", async (data) => {
         io.emit("messageResponse", data);
+        globalThis.collections.chatSessions?.updateOne(
+          { id: data.roomId },
+          { $push: { messages: data.message } }
+        );
 
         // this.convertMessage(data);
         // const completion = await this.openai.createChatCompletion({
@@ -187,10 +183,11 @@ class ChatServer extends Server {
 
       socket.on("result", async (data) => {
         // authenticate user and socket
-        console.log(data);
         let otherPoints = 0;
         let selfPoints = 0;
-        const room = this.roomsMap.get(data.roomId);
+        const room = await globalThis.collections.chatSessions?.findOne(
+          { id: data.roomId }
+        );
         if (data.name === room?.user1) {
           if (!room?.user2?.bot) {
             if (data.result === "DefinitelyHuman") {
@@ -227,12 +224,15 @@ class ChatServer extends Server {
               selfPoints = 10;
             }
           }
+          await globalThis.collections.chatSessions?.updateOne(
+            { id: data.roomId },
+            { $set: { user1: { name: room!.user1.name, result: data.result, bot: room!.user1.bot, ready: true } } }
+          );
           if (room?.user2?.result) {
             io.socketsLeave(data.roomId);
           }
-          room!.user1.result = data.result;
         } else {
-          if (!room?.user2?.bot) {
+          if (!room?.user1?.bot) {
             if (data.result === "DefinitelyHuman") {
               otherPoints = -3;
               selfPoints = 10;
@@ -267,14 +267,14 @@ class ChatServer extends Server {
               selfPoints = 10;
             }
           }
+          await globalThis.collections.chatSessions?.updateOne(
+            { id: data.roomId },
+            { $set: { user2: { name: room!.user2!.name, result: data.result, bot: room!.user2!.bot, ready: true } } }
+          );
           if (room?.user1?.result) {
             io.socketsLeave(data.roomId);
           }
-          room!.user2!.result = data.result;
         }
-        socket.emit("selfResult", {
-          points: selfPoints
-        });
         socket.broadcast.emit("otherResult", {
           result: data.result,
           points: otherPoints
@@ -282,13 +282,28 @@ class ChatServer extends Server {
       });
       socket.on("typing", (data) => socket.broadcast.emit("typingResponse", data));
 
-      socket.on("readyChat", (data) => {
-        const room = this.roomsMap.get(data.roomId);
+      socket.on("readyChat", async (data) => {
+        const room = await globalThis.collections.chatSessions?.findOne(
+          { id: data.roomId }
+        );
         if (room?.user1.name === data.user) {
-          room!.user1.ready = true;
-        } else if (room?.user2?.name === data.user) {{
-          room!.user2!.ready = true;
-        }}
+          await globalThis.collections.chatSessions?.updateOne(
+            { id: data.roomId },
+            { $set: { user1: { name: room!.user1.name, result: "", bot: room!.user1.bot, ready: true } } }
+          );
+          if (room!.user2!.ready) {
+            io.to(data.roomId).emit("startChat");
+          }
+        } else if (room?.user2?.name === data.user) {
+          await globalThis.collections.chatSessions?.updateOne(
+            { id: data.roomId },
+            { $set: { user2: { name: room!.user2!.name, result: "", bot: room!.user2!.bot, ready: true } } }
+          );
+          if (room!.user1.ready) {
+            io.to(data.roomId).emit("startChat");
+          }
+        }
+
       });
 
       socket.on("disconnect", () => {

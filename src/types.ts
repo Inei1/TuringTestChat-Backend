@@ -16,3 +16,22 @@ export interface WaitlistElements {
   email: string;
   date: number;
 }
+
+export interface UserMessage {
+  name: string;
+  message: string;
+}
+
+export interface ChatUser {
+  name: string;
+  bot: boolean;
+  result: string | null;
+  ready: boolean;
+}
+
+export interface ChatSession {
+  id: string;
+  user1: ChatUser;
+  user2: ChatUser;
+  messages: UserMessage[];
+}
