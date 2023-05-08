@@ -138,12 +138,15 @@ class ChatServer extends Server {
           socket.join(roomId);
           logger.info("Room joined: " + roomId);
           socket.emit("roomFound", { roomId: roomId });
-          io.to(roomId).emit("foundChat");
+          // 30 seconds
+          const endTime = Date.now() + 30000;
+          io.to(roomId).emit("foundChat", {endTime: endTime});
         } else {
           const roomId = randomUUID();
           try {
             await globalThis.collections.chatSessions?.insertOne(
               {
+                endTime: -1,
                 id: roomId,
                 messages: [],
                 user1: { name: username, bot: false, result: null, ready: false },
@@ -160,11 +163,16 @@ class ChatServer extends Server {
       });
 
       socket.on("message", async (data) => {
-        io.emit("messageResponse", data);
+        const endTime = await globalThis.collections.chatSessions?.findOne(
+          { id: data.roomId }
+        );
+        if (endTime!.endTime >= Date.now()) {
+          io.emit("messageResponse", data);
         globalThis.collections.chatSessions?.updateOne(
           { id: data.roomId },
           { $push: { messages: data.message } }
         );
+        }
 
         // this.convertMessage(data);
         // const completion = await this.openai.createChatCompletion({
@@ -279,6 +287,10 @@ class ChatServer extends Server {
           result: data.result,
           points: otherPoints
         });
+        socket.emit("selfResult", {
+          result: data.result,
+          points: selfPoints
+        })
       });
       socket.on("typing", (data) => socket.broadcast.emit("typingResponse", data));
 
@@ -292,7 +304,14 @@ class ChatServer extends Server {
             { $set: { user1: { name: room!.user1.name, result: "", bot: room!.user1.bot, ready: true } } }
           );
           if (room!.user2!.ready) {
-            io.to(data.roomId).emit("startChat");
+            // 2.5 minutes
+            const endTime = Date.now() + 150000;
+            await globalThis.collections.chatSessions?.updateOne(
+              { id: data.roomId },
+              { $set: { endTime: endTime } }
+            );
+            io.to(data.roomId).emit("startChat", { endTime: endTime });
+            setTimeout(() => io.to(data.roomId).emit("endChat"), 150000)
           }
         } else if (room?.user2?.name === data.user) {
           await globalThis.collections.chatSessions?.updateOne(
@@ -300,10 +319,16 @@ class ChatServer extends Server {
             { $set: { user2: { name: room!.user2!.name, result: "", bot: room!.user2!.bot, ready: true } } }
           );
           if (room!.user1.ready) {
-            io.to(data.roomId).emit("startChat");
+            // 2.5 minutes
+            const endTime = Date.now() + 150000;
+            await globalThis.collections.chatSessions?.updateOne(
+              { id: data.roomId },
+              { $set: { endTime: endTime } }
+            );
+            io.to(data.roomId).emit("startChat", { endTime: endTime });
+            setTimeout(() => io.to(data.roomId).emit("endChat"), 150000)
           }
         }
-
       });
 
       socket.on("disconnect", () => {

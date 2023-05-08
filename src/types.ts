@@ -30,6 +30,7 @@ export interface ChatUser {
 }
 
 export interface ChatSession {
+  endTime: number;
   id: string;
   user1: ChatUser;
   user2: ChatUser;
