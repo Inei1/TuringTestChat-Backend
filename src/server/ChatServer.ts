@@ -140,7 +140,20 @@ class ChatServer extends Server {
           socket.emit("roomFound", { roomId: roomId });
           // 30 seconds
           const endTime = Date.now() + 30000;
-          io.to(roomId).emit("foundChat", {endTime: endTime});
+          io.to(roomId).emit("foundChat", { endTime: endTime });
+          setTimeout(async () => {
+            const room = await globalThis.collections.chatSessions?.findOne(
+              { id: roomId }
+            );
+            if (!room?.user1.ready) {
+              io.to(roomId).emit("readyExpired");
+              io.socketsLeave(roomId);
+            }
+            if (!room?.user2.ready) {
+              io.to(roomId).emit("readyExpired");
+              io.socketsLeave(roomId);
+            }
+          },30000);
         } else {
           const roomId = randomUUID();
           try {
@@ -166,12 +179,13 @@ class ChatServer extends Server {
         const endTime = await globalThis.collections.chatSessions?.findOne(
           { id: data.roomId }
         );
+        console.log(endTime);
         if (endTime!.endTime >= Date.now()) {
           io.emit("messageResponse", data);
-        globalThis.collections.chatSessions?.updateOne(
-          { id: data.roomId },
-          { $push: { messages: data.message } }
-        );
+          globalThis.collections.chatSessions?.updateOne(
+            { id: data.roomId },
+            { $push: { messages: data.message } }
+          );
         }
 
         // this.convertMessage(data);
@@ -193,43 +207,52 @@ class ChatServer extends Server {
         // authenticate user and socket
         let otherPoints = 0;
         let selfPoints = 0;
+        let other = "";
         const room = await globalThis.collections.chatSessions?.findOne(
           { id: data.roomId }
         );
         if (data.name === room?.user1) {
           if (!room?.user2?.bot) {
-            if (data.result === "DefinitelyHuman") {
+            other = "Human";
+            if (data.result === "Definitely a human") {
               otherPoints = -3;
               selfPoints = 10;
-            } else if (data.result === "PossiblyHuman") {
+            } else if (data.result === "Possibly a human") {
               otherPoints = -1;
               selfPoints = 4;
             } else if (data.result === "Unknown") {
               otherPoints = 1;
               selfPoints = 0;
-            } else if (data.result === "ProbablyBot") {
+            } else if (data.result === "Probably a bot") {
               otherPoints = 4;
               selfPoints = -1;
+            } else if (data.result === "Definitely a bot") {
+              otherPoints = 10;
+              selfPoints = -3;
             } else {
               otherPoints = 10;
               selfPoints = -3;
             }
           } else {
-            if (data.result === "DefinitelyHuman") {
+            other = "Bot";
+            if (data.result === "Definitely a human") {
               otherPoints = 10;
               selfPoints = -3;
-            } else if (data.result === "PossiblyHuman") {
+            } else if (data.result === "Possibly a human") {
               otherPoints = 4;
               selfPoints = -1;
             } else if (data.result === "Unknown") {
               otherPoints = 1;
               selfPoints = 0;
-            } else if (data.result === "ProbablyBot") {
+            } else if (data.result === "Probably a bot") {
               otherPoints = -1;
               selfPoints = 4;
-            } else {
+            } else if (data.result === "Definitely a bot") {
               otherPoints = -3;
               selfPoints = 10;
+            } else {
+              otherPoints = 10;
+              selfPoints = -3;
             }
           }
           await globalThis.collections.chatSessions?.updateOne(
@@ -241,38 +264,46 @@ class ChatServer extends Server {
           }
         } else {
           if (!room?.user1?.bot) {
-            if (data.result === "DefinitelyHuman") {
+            other = "Human";
+            if (data.result === "Definitely a human") {
               otherPoints = -3;
               selfPoints = 10;
-            } else if (data.result === "PossiblyHuman") {
+            } else if (data.result === "Possibly a human") {
               otherPoints = -1;
               selfPoints = 4;
             } else if (data.result === "Unknown") {
               otherPoints = 1;
               selfPoints = 0;
-            } else if (data.result === "ProbablyBot") {
+            } else if (data.result === "Probably a bot") {
               otherPoints = 4;
               selfPoints = -1;
+            } else if (data.result === "Definitely a bot") {
+              otherPoints = 10;
+              selfPoints = -3;
             } else {
               otherPoints = 10;
               selfPoints = -3;
             }
           } else {
-            if (data.result === "DefinitelyHuman") {
+            other = "Bot";
+            if (data.result === "Definitely a human") {
               otherPoints = 10;
               selfPoints = -3;
-            } else if (data.result === "PossiblyHuman") {
+            } else if (data.result === "Possibly a human") {
               otherPoints = 4;
               selfPoints = -1;
             } else if (data.result === "Unknown") {
               otherPoints = 1;
               selfPoints = 0;
-            } else if (data.result === "ProbablyBot") {
+            } else if (data.result === "Probably a bot") {
               otherPoints = -1;
               selfPoints = 4;
-            } else {
+            } else if (data.result === "Definitely a bot") {
               otherPoints = -3;
               selfPoints = 10;
+            } else {
+              otherPoints = 10;
+              selfPoints = -3;
             }
           }
           await globalThis.collections.chatSessions?.updateOne(
@@ -289,7 +320,8 @@ class ChatServer extends Server {
         });
         socket.emit("selfResult", {
           result: data.result,
-          points: selfPoints
+          points: selfPoints,
+          other: other
         })
       });
       socket.on("typing", (data) => socket.broadcast.emit("typingResponse", data));
@@ -304,14 +336,17 @@ class ChatServer extends Server {
             { $set: { user1: { name: room!.user1.name, result: "", bot: room!.user1.bot, ready: true } } }
           );
           if (room!.user2!.ready) {
-            // 2.5 minutes
-            const endTime = Date.now() + 150000;
+            // 2.5 minutes 150000
+            const endChatTime = Date.now() + 30000;
+            const endResultTime = Date.now() + 30000 + 30000;
             await globalThis.collections.chatSessions?.updateOne(
               { id: data.roomId },
-              { $set: { endTime: endTime } }
+              { $set: { endTime: endChatTime } }
             );
-            io.to(data.roomId).emit("startChat", { endTime: endTime });
-            setTimeout(() => io.to(data.roomId).emit("endChat"), 150000)
+            io.to(data.roomId).emit("startChat", { endChatTime: endChatTime, endResultTime: endResultTime });
+            setTimeout(() => io.to(data.roomId).emit("endChat", { millis: 30000 }), 30000);
+            setTimeout(() => io.to(data.roomId).emit("endResult"), 30000 + 30000);
+            setTimeout(() => io.socketsLeave(data.roomId), 30000 + 30000);
           }
         } else if (room?.user2?.name === data.user) {
           await globalThis.collections.chatSessions?.updateOne(
@@ -320,15 +355,29 @@ class ChatServer extends Server {
           );
           if (room!.user1.ready) {
             // 2.5 minutes
-            const endTime = Date.now() + 150000;
+            const endChatTime = Date.now() + 30000;
+            const endResultTime = Date.now() + 30000 + 30000;
             await globalThis.collections.chatSessions?.updateOne(
               { id: data.roomId },
-              { $set: { endTime: endTime } }
+              { $set: { endTime: endChatTime } }
             );
-            io.to(data.roomId).emit("startChat", { endTime: endTime });
-            setTimeout(() => io.to(data.roomId).emit("endChat"), 150000)
+            io.to(data.roomId).emit("startChat", { endChatTime: endChatTime, endResultTime: endResultTime });
+            setTimeout(() => io.to(data.roomId).emit("endChat"), 30000);
+            setTimeout(() => io.to(data.roomId).emit("endResult"), 30000 + 30000);
+            setTimeout(() => io.socketsLeave(data.roomId), 30000 + 30000);
           }
         }
+      });
+
+      socket.on("cancelChat", (data) => {
+        this.emptyRooms = this.emptyRooms.filter((room) => room != data.roomId);
+        socket.disconnect();
+      });
+
+      socket.on("disconnecting", () => {
+        socket.rooms.forEach((socketRoom) => {
+          this.emptyRooms = this.emptyRooms.filter((room) => room != socketRoom);
+        });
       });
 
       socket.on("disconnect", () => {
