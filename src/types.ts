@@ -23,6 +23,7 @@ export interface UserMessage {
 }
 
 export interface ChatUser {
+  socketId: string;
   name: string;
   bot: boolean;
   result: string | null;
@@ -30,7 +31,8 @@ export interface ChatUser {
 }
 
 export interface ChatSession {
-  endTime: number;
+  endChatTime: number;
+  endResultTime: number;
   id: string;
   user1: ChatUser;
   user2: ChatUser;

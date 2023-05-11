@@ -133,13 +133,13 @@ class ChatServer extends Server {
           const roomId = this.emptyRooms.pop()!
           await globalThis.collections.chatSessions?.updateOne(
             { id: roomId },
-            { $set: { user2: { name: username, bot: false, result: null, ready: false } } }
+            { $set: { user2: { name: username, bot: false, result: null, ready: false, socketId: socket.id } } }
           );
           socket.join(roomId);
           logger.info("Room joined: " + roomId);
           socket.emit("roomFound", { roomId: roomId });
           // 30 seconds
-          const endTime = Date.now() + 30000;
+          const endTime = Date.now() + 5000;
           io.to(roomId).emit("foundChat", { endTime: endTime });
           setTimeout(async () => {
             const room = await globalThis.collections.chatSessions?.findOne(
@@ -153,20 +153,21 @@ class ChatServer extends Server {
               io.to(roomId).emit("readyExpired");
               io.socketsLeave(roomId);
             }
-          },30000);
+          }, 5000);
         } else {
           const roomId = randomUUID();
           try {
             await globalThis.collections.chatSessions?.insertOne(
               {
-                endTime: -1,
+                endChatTime: -1,
+                endResultTime: -1,
                 id: roomId,
                 messages: [],
-                user1: { name: username, bot: false, result: null, ready: false },
-                user2: { name: "", bot: false, result: null, ready: false }
+                user1: { name: username, bot: false, result: null, ready: false, socketId: socket.id },
+                user2: { name: "", bot: false, result: null, ready: false, socketId: "" }
               });
           } catch (error) {
-            console.error(error);
+            logger.err(error);
           }
           this.emptyRooms.push(roomId);
           socket.join(roomId);
@@ -179,8 +180,7 @@ class ChatServer extends Server {
         const endTime = await globalThis.collections.chatSessions?.findOne(
           { id: data.roomId }
         );
-        console.log(endTime);
-        if (endTime!.endTime >= Date.now()) {
+        if (endTime!.endChatTime >= Date.now()) {
           io.emit("messageResponse", data);
           globalThis.collections.chatSessions?.updateOne(
             { id: data.roomId },
@@ -204,125 +204,127 @@ class ChatServer extends Server {
       });
 
       socket.on("result", async (data) => {
-        // authenticate user and socket
-        let otherPoints = 0;
-        let selfPoints = 0;
-        let other = "";
-        const room = await globalThis.collections.chatSessions?.findOne(
+        const endTime = await globalThis.collections.chatSessions?.findOne(
           { id: data.roomId }
         );
-        if (data.name === room?.user1) {
-          if (!room?.user2?.bot) {
-            other = "Human";
-            if (data.result === "Definitely a human") {
-              otherPoints = -3;
-              selfPoints = 10;
-            } else if (data.result === "Possibly a human") {
-              otherPoints = -1;
-              selfPoints = 4;
-            } else if (data.result === "Unknown") {
-              otherPoints = 1;
-              selfPoints = 0;
-            } else if (data.result === "Probably a bot") {
-              otherPoints = 4;
-              selfPoints = -1;
-            } else if (data.result === "Definitely a bot") {
-              otherPoints = 10;
-              selfPoints = -3;
-            } else {
-              otherPoints = 10;
-              selfPoints = -3;
-            }
-          } else {
-            other = "Bot";
-            if (data.result === "Definitely a human") {
-              otherPoints = 10;
-              selfPoints = -3;
-            } else if (data.result === "Possibly a human") {
-              otherPoints = 4;
-              selfPoints = -1;
-            } else if (data.result === "Unknown") {
-              otherPoints = 1;
-              selfPoints = 0;
-            } else if (data.result === "Probably a bot") {
-              otherPoints = -1;
-              selfPoints = 4;
-            } else if (data.result === "Definitely a bot") {
-              otherPoints = -3;
-              selfPoints = 10;
-            } else {
-              otherPoints = 10;
-              selfPoints = -3;
-            }
-          }
-          await globalThis.collections.chatSessions?.updateOne(
-            { id: data.roomId },
-            { $set: { user1: { name: room!.user1.name, result: data.result, bot: room!.user1.bot, ready: true } } }
+        // add another second to send response
+        if (endTime!.endChatTime <= Date.now() && endTime!.endResultTime + 1000 >= Date.now()) {
+          // authenticate user and socket
+          let otherPoints = 0;
+          let selfPoints = 0;
+          let other = "";
+          const room = await globalThis.collections.chatSessions?.findOne(
+            { id: data.roomId }
           );
-          if (room?.user2?.result) {
-            io.socketsLeave(data.roomId);
-          }
-        } else {
-          if (!room?.user1?.bot) {
-            other = "Human";
-            if (data.result === "Definitely a human") {
-              otherPoints = -3;
-              selfPoints = 10;
-            } else if (data.result === "Possibly a human") {
-              otherPoints = -1;
-              selfPoints = 4;
-            } else if (data.result === "Unknown") {
-              otherPoints = 1;
-              selfPoints = 0;
-            } else if (data.result === "Probably a bot") {
-              otherPoints = 4;
-              selfPoints = -1;
-            } else if (data.result === "Definitely a bot") {
-              otherPoints = 10;
-              selfPoints = -3;
+          if (data.name === room?.user1.name) {
+            if (!room?.user2?.bot) {
+              other = "Human";
+              if (data.result === "Definitely a human") {
+                otherPoints = -3;
+                selfPoints = 10;
+              } else if (data.result === "Possibly a human") {
+                otherPoints = -1;
+                selfPoints = 4;
+              } else if (data.result === "Unknown") {
+                otherPoints = 1;
+                selfPoints = 0;
+              } else if (data.result === "Possibly a bot") {
+                otherPoints = 4;
+                selfPoints = -1;
+              } else if (data.result === "Definitely a bot") {
+                otherPoints = 10;
+                selfPoints = -3;
+              } else {
+                otherPoints = 10;
+                selfPoints = -3;
+              }
             } else {
-              otherPoints = 10;
-              selfPoints = -3;
+              other = "Bot";
+              if (data.result === "Definitely a human") {
+                otherPoints = 10;
+                selfPoints = -3;
+              } else if (data.result === "Possibly a human") {
+                otherPoints = 4;
+                selfPoints = -1;
+              } else if (data.result === "Unknown") {
+                otherPoints = 1;
+                selfPoints = 0;
+              } else if (data.result === "Possibly a bot") {
+                otherPoints = -1;
+                selfPoints = 4;
+              } else if (data.result === "Definitely a bot") {
+                otherPoints = -3;
+                selfPoints = 10;
+              } else {
+                otherPoints = 10;
+                selfPoints = -3;
+              }
             }
-          } else {
-            other = "Bot";
-            if (data.result === "Definitely a human") {
-              otherPoints = 10;
-              selfPoints = -3;
-            } else if (data.result === "Possibly a human") {
-              otherPoints = 4;
-              selfPoints = -1;
-            } else if (data.result === "Unknown") {
-              otherPoints = 1;
-              selfPoints = 0;
-            } else if (data.result === "Probably a bot") {
-              otherPoints = -1;
-              selfPoints = 4;
-            } else if (data.result === "Definitely a bot") {
-              otherPoints = -3;
-              selfPoints = 10;
+            console.log({ name: room!.user1.name, result: data.result, bot: room!.user1.bot, ready: true, socketId: room!.user1.socketId });
+            await globalThis.collections.chatSessions?.updateOne(
+              { id: data.roomId },
+              { $set: { user1: { name: room!.user1.name, result: data.result, bot: room!.user1.bot, ready: true, socketId: room!.user1.socketId } } }
+            );
+          } else if (data.name === room?.user2.name) {
+            if (!room?.user1?.bot) {
+              other = "Human";
+              if (data.result === "Definitely a human") {
+                otherPoints = -3;
+                selfPoints = 10;
+              } else if (data.result === "Possibly a human") {
+                otherPoints = -1;
+                selfPoints = 4;
+              } else if (data.result === "Unknown") {
+                otherPoints = 1;
+                selfPoints = 0;
+              } else if (data.result === "Possibly a bot") {
+                otherPoints = 4;
+                selfPoints = -1;
+              } else if (data.result === "Definitely a bot") {
+                otherPoints = 10;
+                selfPoints = -3;
+              } else {
+                otherPoints = 10;
+                selfPoints = -3;
+              }
             } else {
-              otherPoints = 10;
-              selfPoints = -3;
+              other = "Bot";
+              if (data.result === "Definitely a human") {
+                otherPoints = 10;
+                selfPoints = -3;
+              } else if (data.result === "Possibly a human") {
+                otherPoints = 4;
+                selfPoints = -1;
+              } else if (data.result === "Unknown") {
+                otherPoints = 1;
+                selfPoints = 0;
+              } else if (data.result === "Possibly a bot") {
+                otherPoints = -1;
+                selfPoints = 4;
+              } else if (data.result === "Definitely a bot") {
+                otherPoints = -3;
+                selfPoints = 10;
+              } else {
+                otherPoints = 10;
+                selfPoints = -3;
+              }
             }
+            console.log({ name: room!.user2!.name, result: data.result, bot: room!.user2!.bot, ready: true, socketId: room!.user2.socketId });
+            await globalThis.collections.chatSessions?.updateOne(
+              { id: data.roomId },
+              { $set: { user2: { name: room!.user2!.name, result: data.result, bot: room!.user2!.bot, ready: true, socketId: room!.user2.socketId } } }
+            );
           }
-          await globalThis.collections.chatSessions?.updateOne(
-            { id: data.roomId },
-            { $set: { user2: { name: room!.user2!.name, result: data.result, bot: room!.user2!.bot, ready: true } } }
-          );
-          if (room?.user1?.result) {
-            io.socketsLeave(data.roomId);
-          }
+          socket.broadcast.emit("otherResult", {
+            result: data.result,
+            points: otherPoints
+          });
+          socket.emit("selfResult", {
+            result: data.result,
+            points: selfPoints,
+            other: other
+          });
         }
-        socket.broadcast.emit("otherResult", {
-          result: data.result,
-          points: otherPoints
-        });
-        socket.emit("selfResult", {
-          result: data.result,
-          points: selfPoints,
-          other: other
-        })
       });
       socket.on("typing", (data) => socket.broadcast.emit("typingResponse", data));
 
@@ -333,38 +335,86 @@ class ChatServer extends Server {
         if (room?.user1.name === data.user) {
           await globalThis.collections.chatSessions?.updateOne(
             { id: data.roomId },
-            { $set: { user1: { name: room!.user1.name, result: "", bot: room!.user1.bot, ready: true } } }
+            { $set: { user1: { name: room!.user1.name, result: "", bot: room!.user1.bot, ready: true, socketId: room!.user1.socketId } } }
           );
           if (room!.user2!.ready) {
             // 2.5 minutes 150000
-            const endChatTime = Date.now() + 30000;
-            const endResultTime = Date.now() + 30000 + 30000;
+            const endChatTime = Date.now() + 5000;
+            const endResultTime = Date.now() + 5000 + 5000;
             await globalThis.collections.chatSessions?.updateOne(
               { id: data.roomId },
-              { $set: { endTime: endChatTime } }
+              { $set: { endChatTime: endChatTime, endResultTime: endResultTime } }
             );
             io.to(data.roomId).emit("startChat", { endChatTime: endChatTime, endResultTime: endResultTime });
-            setTimeout(() => io.to(data.roomId).emit("endChat", { millis: 30000 }), 30000);
-            setTimeout(() => io.to(data.roomId).emit("endResult"), 30000 + 30000);
-            setTimeout(() => io.socketsLeave(data.roomId), 30000 + 30000);
+            setTimeout(() => io.to(data.roomId).emit("endChat", { millis: 5000 }), 5000);
+            setTimeout(async () => {
+              const newRoom = await globalThis.collections.chatSessions?.findOne(
+                { id: data.roomId }
+              );
+              if (newRoom?.user1.result === "") {
+                io.to(newRoom?.user2.socketId).emit("noResult");
+                io.to(newRoom?.user1.socketId).emit("selfResult", {
+                  points: -3,
+                  other: newRoom?.user2.bot ? "Bot" : "Human",
+                  result: "",
+                });
+              } else {
+                io.to(newRoom!.user2.socketId).emit("completeChat");
+              }
+              if (newRoom?.user2.result === "") {
+                io.to(newRoom?.user1.socketId).emit("noResult");
+                io.to(newRoom?.user2.socketId).emit("selfResult", {
+                  points: -3,
+                  other: newRoom?.user1.bot ? "Bot" : "Human",
+                  result: "",
+                });
+              } else {
+                io.to(newRoom!.user1.socketId).emit("completeChat");
+              }
+            }, 5000 + 5000);
+            setTimeout(() => io.socketsLeave(data.roomId), 5000 + 6000);
           }
         } else if (room?.user2?.name === data.user) {
           await globalThis.collections.chatSessions?.updateOne(
             { id: data.roomId },
-            { $set: { user2: { name: room!.user2!.name, result: "", bot: room!.user2!.bot, ready: true } } }
+            { $set: { user2: { name: room!.user2!.name, result: "", bot: room!.user2!.bot, ready: true, socketId: room!.user2.socketId } } }
           );
           if (room!.user1.ready) {
             // 2.5 minutes
-            const endChatTime = Date.now() + 30000;
-            const endResultTime = Date.now() + 30000 + 30000;
+            const endChatTime = Date.now() + 5000;
+            const endResultTime = Date.now() + 5000 + 5000;
             await globalThis.collections.chatSessions?.updateOne(
               { id: data.roomId },
-              { $set: { endTime: endChatTime } }
+              { $set: { endChatTime: endChatTime, endResultTime: endResultTime } }
             );
             io.to(data.roomId).emit("startChat", { endChatTime: endChatTime, endResultTime: endResultTime });
-            setTimeout(() => io.to(data.roomId).emit("endChat"), 30000);
-            setTimeout(() => io.to(data.roomId).emit("endResult"), 30000 + 30000);
-            setTimeout(() => io.socketsLeave(data.roomId), 30000 + 30000);
+            setTimeout(() => io.to(data.roomId).emit("endChat", { millis: 5000 }), 5000);
+            setTimeout(async () => {
+              const newRoom = await globalThis.collections.chatSessions?.findOne(
+                { id: data.roomId }
+              );
+              if (newRoom?.user1.result === "") {
+                io.to(newRoom?.user2.socketId).emit("noResult");
+                io.to(newRoom?.user1.socketId).emit("selfResult", {
+                  points: -3,
+                  other: newRoom?.user2.bot ? "Bot" : "Human",
+                  result: "",
+                });
+              } else {
+                io.to(newRoom!.user2.socketId).emit("completeChat");
+              }
+              if (newRoom?.user2.result === "") {
+                io.to(newRoom?.user1.socketId).emit("noResult");
+                io.to(newRoom?.user2.socketId).emit("selfResult", {
+                  points: -3,
+                  other: newRoom?.user1.bot ? "Bot" : "Human",
+                  result: "",
+                });
+              } else {
+                io.to(newRoom!.user1.socketId).emit("completeChat");
+              }
+            }, 5000 + 5000);
+            setTimeout(() => io.socketsLeave(data.roomId), 5000 + 6000);
           }
         }
       });
