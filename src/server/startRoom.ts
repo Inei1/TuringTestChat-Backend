@@ -4,6 +4,7 @@ import { DefaultEventsMap } from "socket.io/dist/typed-events";
 import { Server as SocketServer } from 'socket.io';
 import logger from 'jet-logger';
 import { randomUUID } from "crypto";
+import { generateSystemMessage } from "./generateSystemMessage";
 
 const WAITING_MILLIS = 30000;
 
@@ -47,7 +48,7 @@ export const startRoom = async (username: any, emptyRooms: string[],
     const botChat = getRandomPercent();
     // 75% chance to queue like normal.
     //if (botChat >= 25) {
-    if (true) {
+    if (false) {
       try {
         await globalThis.collections.chatSessions?.insertOne(
           {
@@ -68,12 +69,14 @@ export const startRoom = async (username: any, emptyRooms: string[],
       // 25% chance to immediately queue into a bot instead.
     } else {
       const endTime = Date.now() + WAITING_MILLIS;
+      console.log(roomId);
       try {
         await globalThis.collections.chatSessions?.insertOne({
           endChatTime: -1,
           endResultTime: -1,
           id: roomId,
-          messages: [],
+          messages: [{ name: "System",
+          message: generateSystemMessage() }],
           user1: { name: "Bot", bot: true, result: null, ready: true, socketId: "" },
           user2: { name: username, bot: false, result: null, ready: false, socketId: socket.id }
         });
@@ -81,6 +84,7 @@ export const startRoom = async (username: any, emptyRooms: string[],
         logger.err(error);
       }
       socket.join(roomId);
+      socket.emit("roomFound", { roomId: roomId });
       socket.emit("foundChat", { endTime: endTime });
       logger.info("User instantly joined game with bot " + roomId);
       setTimeout(async () => {

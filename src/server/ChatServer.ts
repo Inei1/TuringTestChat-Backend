@@ -33,23 +33,11 @@ class ChatServer extends Server {
     apiKey: this.apiKey,
   });
   openai = new OpenAIApi(this.config);
-  // need to optimize this
-  messages: any[] = [{ role: "system", content: "You are trying to convince the person on the other side that you are a human." }];
   wordsPerSecond = 20;
   // make between 30-80 wpm (0.5-1.33), weighted more to low numbers
 
   private readonly DEV_MSG = 'Express Server is running in development mode. ' +
     'No front-end content is being served.';
-
-  convertMessage = (data: any) => {
-    this.messages.push({ role: data.name, content: data.text });
-    // console.log(data.text);
-    // if (data.name === "user1") {
-    //   this.messages.push({ role: "user", content: data.text });
-    // } else {
-    //   this.messages.push({ role: "user1", content: data.text });
-    // }
-  }
 
   constructor() {
     super(true);
@@ -139,11 +127,11 @@ class ChatServer extends Server {
       logger.info("User connected: " + socket.id);
       socket.on("startRoom", (data) => startRoom(data, this.emptyRooms, socket, io));
 
-      socket.on("message", (data) => message(data, io));
+      socket.on("message", (data) => message(data, io, this.openai, this.wordsPerSecond));
 
       socket.on("result", (data) => result(data, socket));
 
-      socket.on("typing", (data) => socket.broadcast.emit("typingResponse", data));
+      socket.on("typing", (data) => socket.broadcast.emit("typingResponse", "They"));
 
       socket.on("readyChat", (data) => readyChat(data, io));
 
