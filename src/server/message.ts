@@ -1,10 +1,11 @@
 import { DefaultEventsMap } from "socket.io/dist/typed-events";
-import { Server as SocketServer } from 'socket.io';
+import { Socket, Server as SocketServer } from 'socket.io';
 import { ChatCompletionRequestMessageRoleEnum, OpenAIApi } from "openai";
 import { UserMessage } from "../types";
 
 export const message = async (data: any,
   io: SocketServer<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,
+  socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,
   openai: OpenAIApi, wordsPerSecond: number) => {
   const room = await globalThis.collections.chatSessions?.findOne(
     { id: data.roomId }
@@ -23,7 +24,7 @@ export const message = async (data: any,
         model: "gpt-3.5-turbo",
         messages: convertedMessages,
       });
-      setTimeout(() => io.to(room.id).emit("typingResponse", "User"), 100);
+      setTimeout(() => io.to(room.id).emit("typingResponse", "Chatter"), 100);
       const message = completion.data.choices[0].message?.content;
 
       setTimeout(() => {
@@ -42,6 +43,8 @@ export const message = async (data: any,
     }
   } else {
     io.to(room?.id!).emit("messageResponse", data);
+    // socket.emit("messageWaiting");
+    // socket.broadcast.to(room?.id).emit("");
     globalThis.collections.chatSessions?.updateOne(
       { id: data.roomId },
       { $push: { messages: { name: data.name, message: data.text } } }
