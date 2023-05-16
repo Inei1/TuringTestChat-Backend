@@ -11,7 +11,7 @@ export const readyChat = async (data: any, io: SocketServer<DefaultEventsMap, De
   if (room?.user1.name === data.user) {
     await globalThis.collections.chatSessions?.updateOne(
       { id: data.roomId },
-      { $set: { user1: { name: room!.user1.name, result: "", bot: room!.user1.bot, ready: true, socketId: room!.user1.socketId } } }
+      { $set: { user1: { name: room!.user1.name, result: "", bot: room!.user1.bot, ready: true, socketId: room!.user1.socketId, goal: room!.user1.goal } } }
     );
     if (room!.user2!.ready) {
       initiateChat(data, io);
@@ -19,7 +19,7 @@ export const readyChat = async (data: any, io: SocketServer<DefaultEventsMap, De
   } else if (room?.user2?.name === data.user) {
     await globalThis.collections.chatSessions?.updateOne(
       { id: data.roomId },
-      { $set: { user2: { name: room!.user2!.name, result: "", bot: room!.user2!.bot, ready: true, socketId: room!.user2.socketId } } }
+      { $set: { user2: { name: room!.user2.name, result: "", bot: room!.user2.bot, ready: true, socketId: room!.user2.socketId, goal: room!.user2.goal } } }
     );
     if (room!.user1.ready) {
       initiateChat(data, io);

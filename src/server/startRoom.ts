@@ -19,7 +19,7 @@ export const startRoom = async (username: any, emptyRooms: string[],
       const roomId = emptyRooms.pop()!
       await globalThis.collections.chatSessions?.updateOne(
         { id: roomId },
-        { $set: { user2: { name: username, bot: false, result: null, ready: false, socketId: socket.id } } }
+        { $set: { user2: { name: username, bot: false, result: null, ready: false, socketId: socket.id, goal: getRandomPercent() < 50 ? "Human" : "Bot" } } }
       );
       socket.join(roomId);
       logger.info("Room joined: " + roomId);
@@ -56,8 +56,8 @@ export const startRoom = async (username: any, emptyRooms: string[],
             endResultTime: -1,
             id: roomId,
             messages: [],
-            user1: { name: username, bot: false, result: null, ready: false, socketId: socket.id },
-            user2: { name: "", bot: false, result: null, ready: false, socketId: "" }
+            user1: { name: username, bot: false, result: null, ready: false, socketId: socket.id, goal: getRandomPercent() < 50 ? "Human" : "Bot" },
+            user2: { name: "", bot: false, result: null, ready: false, socketId: "", goal: getRandomPercent() < 50 ? "Human" : "Bot" }
           });
       } catch (error) {
         logger.err(error);
@@ -77,8 +77,8 @@ export const startRoom = async (username: any, emptyRooms: string[],
           id: roomId,
           messages: [{ name: "System",
           message: generateSystemMessage() }],
-          user1: { name: "Bot", bot: true, result: null, ready: true, socketId: "" },
-          user2: { name: username, bot: false, result: null, ready: false, socketId: socket.id }
+          user1: { name: "Bot", bot: true, result: null, ready: true, socketId: "", goal: getRandomPercent() < 50 ? "Human" : "Bot" },
+          user2: { name: username, bot: false, result: null, ready: false, socketId: socket.id, goal: getRandomPercent() < 50 ? "Human" : "Bot" }
         });
       } catch (error) {
         logger.err(error);

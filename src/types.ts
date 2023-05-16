@@ -24,6 +24,7 @@ export interface UserMessage {
 
 export interface ChatUser {
   socketId: string;
+  goal: "Human" | "Bot";
   name: string;
   bot: boolean;
   result: string | null;

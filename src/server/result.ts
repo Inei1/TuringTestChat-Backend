@@ -64,7 +64,7 @@ export const result = async (data: any, socket: any) => {
       }
       await globalThis.collections.chatSessions?.updateOne(
         { id: data.roomId },
-        { $set: { user1: { name: room!.user1.name, result: data.result, bot: room!.user1.bot, ready: true, socketId: room!.user1.socketId } } }
+        { $set: { user1: { name: room!.user1.name, result: data.result, bot: room!.user1.bot, ready: true, socketId: room!.user1.socketId, goal: room!.user1.goal } } }
       );
     } else if (data.name === room?.user2.name) {
       if (!room?.user1?.bot) {
@@ -112,10 +112,10 @@ export const result = async (data: any, socket: any) => {
       }
       await globalThis.collections.chatSessions?.updateOne(
         { id: data.roomId },
-        { $set: { user2: { name: room!.user2!.name, result: data.result, bot: room!.user2!.bot, ready: true, socketId: room!.user2.socketId } } }
+        { $set: { user2: { name: room!.user2!.name, result: data.result, bot: room!.user2!.bot, ready: true, socketId: room!.user2.socketId, goal: room!.user2.goal } } }
       );
     }
-    
+
     socket.broadcast.emit("otherResult", {
       result: data.result,
       points: otherPoints
