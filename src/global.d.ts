@@ -9,6 +9,7 @@ declare global {
   var collections: {
     users?: Collection<UserElements>,
     waitlist?: Collection<WaitlistElements>,
-    chatSessions?: Collection<ChatSession>
+    chatSessions?: Collection<ChatSession>,
+    pastChatSessions: Collection<ChatSession>,
   };
 }

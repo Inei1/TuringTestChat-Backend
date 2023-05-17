@@ -29,6 +29,7 @@ export interface ChatUser {
   bot: boolean;
   result: string | null;
   ready: boolean;
+  canSend: boolean;
 }
 
 export interface ChatSession {

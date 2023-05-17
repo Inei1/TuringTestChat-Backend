@@ -117,32 +117,29 @@ class ChatServer extends Server {
     });
 
     io.on("connection", (socket) => {
-      // Whether a person joins into a bot or another player is ideally a 50/50 percent chance.
-      // To be as convincing as possible, there should be a chance that the user instantly queues into a bot.
-      // To make the chances exactly 50/50, there is a 25% percent chance to instant queue into a bot.
-      // Because of this, we need to have the chance of queueing into a bot instead of a player when finding
-      // a game to be 33%. The probability of queueing into a bot is 1/4 + (3/4 * 1/3) = 50%.
-      // The probability of queueing into a human is (3/4 * 2/3) = 50%.
-
       logger.info("User connected: " + socket.id);
+
       socket.on("startRoom", (data) => startRoom(data, this.emptyRooms, socket, io));
 
       socket.on("message", (data) => message(data, io, socket, this.openai, this.wordsPerSecond));
 
       socket.on("result", (data) => result(data, socket));
 
-      socket.on("typing", (data) => socket.broadcast.emit("typingResponse", "They"));
+      socket.on("typing", (data) => socket.broadcast.emit("typingResponse", "Chatter"));
 
-      socket.on("readyChat", (data) => readyChat(data, io));
+      socket.on("readyChat", (data) => readyChat(data, io, socket));
 
       socket.on("cancelChat", (data) => {
         this.emptyRooms = this.emptyRooms.filter((room) => room != data.roomId);
         socket.disconnect();
       });
 
-      socket.on("disconnecting", () => {
+      socket.on("disconnecting", async () => {
         socket.rooms.forEach((socketRoom) => {
-          this.emptyRooms = this.emptyRooms.filter((room) => room != socketRoom);
+          this.emptyRooms = this.emptyRooms.filter((room) => {
+            console.log(socketRoom);
+            return room != socketRoom;
+          });
         });
       });
 

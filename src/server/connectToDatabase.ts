@@ -12,8 +12,15 @@ export async function connectToDatabase() {
   const waitlistCollection: Collection<WaitlistElements> =
     db.collection<WaitlistElements>(process.env.WAITLIST_COLLECTION_NAME!);
   const chatSessionsCollection: Collection<ChatSession> =
-    db.collection<ChatSession>(process.env.CHAT_SESSION_COLLECTION_NAME!)
+    db.collection<ChatSession>(process.env.CHAT_SESSION_COLLECTION_NAME!);
+  const pastChatSessionsCollection: Collection<ChatSession> =
+    db.collection<ChatSession>(process.env.PAST_CHAT_SESSION_COLLECTION_NAME!);
   console.log(`Successfully connected to database: ${db.databaseName}
   and collection: ${usersCollection.collectionName}`);
-  return { users: usersCollection, waitlist: waitlistCollection, chatSessions: chatSessionsCollection };
+  return {
+    users: usersCollection,
+    waitlist: waitlistCollection,
+    chatSessions: chatSessionsCollection,
+    pastChatSessions: pastChatSessionsCollection
+  };
 }

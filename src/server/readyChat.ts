@@ -1,40 +1,51 @@
 import { DefaultEventsMap } from "socket.io/dist/typed-events";
-import { Server as SocketServer } from 'socket.io';
+import { Socket, Server as SocketServer } from 'socket.io';
+import { getRandomPercent } from "./getRandomPercent";
 
-const CHAT_TIME = 150000;
-const RESULT_TIME = 30000;
+// const CHAT_TIME = 150000;
+const CHAT_TIME = 5000;
+// const RESULT_TIME = 30000;
+const RESULT_TIME = 3000;
 
-export const readyChat = async (data: any, io: SocketServer<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>) => {
+export const readyChat = async (data: any, io: SocketServer<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,
+  socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>) => {
   const room = await globalThis.collections.chatSessions?.findOne(
     { id: data.roomId }
   );
   if (room?.user1.name === data.user) {
+    const otherReady = room!.user2.ready;
+    const canSend = getRandomPercent() < 50;
     await globalThis.collections.chatSessions?.updateOne(
       { id: data.roomId },
-      { $set: { user1: { name: room!.user1.name, result: "", bot: room!.user1.bot, ready: true, socketId: room!.user1.socketId, goal: room!.user1.goal } } }
+      { $set: { user1: { name: room!.user1.name, result: "", bot: room!.user1.bot, ready: true, socketId: room!.user1.socketId, goal: room!.user1.goal, canSend: otherReady ? !room?.user2.canSend : canSend } } }
     );
-    if (room!.user2!.ready) {
-      initiateChat(data, io);
+    if (otherReady) {
+      initiateChat(data, io, socket, canSend);
     }
   } else if (room?.user2?.name === data.user) {
+    const otherReady = room!.user1.ready;
+    const canSend = getRandomPercent() < 50;
     await globalThis.collections.chatSessions?.updateOne(
       { id: data.roomId },
-      { $set: { user2: { name: room!.user2.name, result: "", bot: room!.user2.bot, ready: true, socketId: room!.user2.socketId, goal: room!.user2.goal } } }
+      { $set: { user2: { name: room!.user2.name, result: "", bot: room!.user2.bot, ready: true, socketId: room!.user2.socketId, goal: room!.user2.goal, canSend: otherReady ? !room?.user1.canSend : canSend } } }
     );
-    if (room!.user1.ready) {
-      initiateChat(data, io);
+    if (otherReady) {
+      initiateChat(data, io, socket, canSend);
     }
   }
 }
 
-const initiateChat = async (data: any, io: SocketServer<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>) => {
+const initiateChat = async (data: any, io: SocketServer<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,
+  socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,
+  canSend: boolean) => {
   const endChatTime = Date.now() + CHAT_TIME;
   const endResultTime = Date.now() + CHAT_TIME + RESULT_TIME;
   await globalThis.collections.chatSessions?.updateOne(
     { id: data.roomId },
     { $set: { endChatTime: endChatTime, endResultTime: endResultTime } }
   );
-  io.to(data.roomId).emit("startChat", { endChatTime: endChatTime, endResultTime: endResultTime });
+  socket.emit("startChat", { endChatTime: endChatTime, endResultTime: endResultTime, canSend: canSend });
+  socket.to(data.roomId).emit("startChat", { endChatTime: endChatTime, endResultTime: endResultTime, canSend: !canSend });
   setTimeout(() => io.to(data.roomId).emit("endChat"), CHAT_TIME);
   setTimeout(async () => {
     const newRoom = await globalThis.collections.chatSessions?.findOne(
@@ -61,5 +72,12 @@ const initiateChat = async (data: any, io: SocketServer<DefaultEventsMap, Defaul
       io.to(newRoom!.user1.socketId).emit("completeChat");
     }
   }, CHAT_TIME + RESULT_TIME);
-  setTimeout(() => io.socketsLeave(data.roomId), CHAT_TIME + RESULT_TIME + 1000);
+  setTimeout(async () => {
+    io.socketsLeave(data.roomId);
+    const newRoom = await globalThis.collections.chatSessions?.findOne(
+      { id: data.roomId }
+    );
+    await globalThis.collections.pastChatSessions?.insertOne(newRoom!);
+    await globalThis.collections.chatSessions?.deleteOne(newRoom!);
+  }, CHAT_TIME + RESULT_TIME + 1000);
 }

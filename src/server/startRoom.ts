@@ -8,6 +8,12 @@ import { generateSystemMessage } from "./generateSystemMessage";
 
 const WAITING_MILLIS = 30000;
 
+// Whether a person joins into a bot or another player is ideally a 50/50 percent chance.
+// To be as convincing as possible, there should be a chance that the user instantly queues into a bot.
+// To make the chances exactly 50/50, there is a 25% percent chance to instant queue into a bot.
+// Because of this, we need to have the chance of queueing into a bot instead of a player when finding
+// a game to be 33%. The probability of queueing into a bot is 1/4 + (3/4 * 1/3) = 50%.
+// The probability of queueing into a human is (3/4 * 2/3) = 50%.
 export const startRoom = async (username: any, emptyRooms: string[],
   socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,
   io: SocketServer<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>) => {
@@ -17,9 +23,12 @@ export const startRoom = async (username: any, emptyRooms: string[],
     // if (botChat >= 33) {
     if (true) {
       const roomId = emptyRooms.pop()!
+      const room = await globalThis.collections.chatSessions?.findOne(
+        { id: roomId }
+      );
       await globalThis.collections.chatSessions?.updateOne(
         { id: roomId },
-        { $set: { user2: { name: username, bot: false, result: null, ready: false, socketId: socket.id, goal: getRandomPercent() < 50 ? "Human" : "Bot" } } }
+        { $set: { user2: { name: username, bot: false, result: null, ready: false, socketId: socket.id, goal: getRandomPercent() < 50 ? "Human" : "Bot", canSend: room?.user2.canSend! } } }
       );
       socket.join(roomId);
       logger.info("Room joined: " + roomId);
@@ -48,7 +57,8 @@ export const startRoom = async (username: any, emptyRooms: string[],
     const botChat = getRandomPercent();
     // 75% chance to queue like normal.
     //if (botChat >= 25) {
-    if (false) {
+    if (true) {
+      const user1Start = getRandomPercent() < 50;
       try {
         await globalThis.collections.chatSessions?.insertOne(
           {
@@ -56,8 +66,8 @@ export const startRoom = async (username: any, emptyRooms: string[],
             endResultTime: -1,
             id: roomId,
             messages: [],
-            user1: { name: username, bot: false, result: null, ready: false, socketId: socket.id, goal: getRandomPercent() < 50 ? "Human" : "Bot" },
-            user2: { name: "", bot: false, result: null, ready: false, socketId: "", goal: getRandomPercent() < 50 ? "Human" : "Bot" }
+            user1: { name: username, bot: false, result: null, ready: false, socketId: socket.id, goal: getRandomPercent() < 50 ? "Human" : "Bot", canSend: user1Start },
+            user2: { name: "", bot: false, result: null, ready: false, socketId: "", goal: getRandomPercent() < 50 ? "Human" : "Bot", canSend: !user1Start }
           });
       } catch (error) {
         logger.err(error);
@@ -69,16 +79,18 @@ export const startRoom = async (username: any, emptyRooms: string[],
       // 25% chance to immediately queue into a bot instead.
     } else {
       const endTime = Date.now() + WAITING_MILLIS;
-      console.log(roomId);
+      const botStart = getRandomPercent() < 50;
       try {
         await globalThis.collections.chatSessions?.insertOne({
           endChatTime: -1,
           endResultTime: -1,
           id: roomId,
-          messages: [{ name: "System",
-          message: generateSystemMessage() }],
-          user1: { name: "Bot", bot: true, result: null, ready: true, socketId: "", goal: getRandomPercent() < 50 ? "Human" : "Bot" },
-          user2: { name: username, bot: false, result: null, ready: false, socketId: socket.id, goal: getRandomPercent() < 50 ? "Human" : "Bot" }
+          messages: [{
+            name: "System",
+            message: generateSystemMessage()
+          }],
+          user1: { name: "Bot", bot: true, result: null, ready: true, socketId: "", goal: getRandomPercent() < 50 ? "Human" : "Bot", canSend: botStart },
+          user2: { name: username, bot: false, result: null, ready: false, socketId: socket.id, goal: getRandomPercent() < 50 ? "Human" : "Bot", canSend: !botStart }
         });
       } catch (error) {
         logger.err(error);
