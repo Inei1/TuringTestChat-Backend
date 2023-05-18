@@ -4,8 +4,6 @@ import { ChatCompletionRequestMessageRoleEnum, OpenAIApi } from "openai";
 import { UserMessage } from "../types";
 import { randomUUID } from "crypto";
 
-const MESSAGE_TIMEOUT = 30000;
-
 export const message = async (data: any,
   io: SocketServer<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,
   socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,
@@ -13,7 +11,7 @@ export const message = async (data: any,
   const room = await globalThis.collections.chatSessions?.findOne(
     { id: data.roomId }
   );
-  const sendingUser = room?.user1.name === data.name ? room?.user1 : room?.user2
+  const sendingUser = room?.user1.name === data.name ? room?.user1 : room?.user2;
   data.id = randomUUID();
   if (room!.endChatTime >= Date.now() && sendingUser?.canSend) {
     if ((room?.user1.name === data.name && room?.user2.bot) || (room?.user2.name === data.name && room?.user1.bot)) {

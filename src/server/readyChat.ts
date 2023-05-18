@@ -14,20 +14,20 @@ export const readyChat = async (data: any, io: SocketServer<DefaultEventsMap, De
   );
   if (room?.user1.name === data.user) {
     const otherReady = room!.user2.ready;
-    const canSend = getRandomPercent() < 50;
+    const canSend = room?.user1.canSend!;
     await globalThis.collections.chatSessions?.updateOne(
       { id: data.roomId },
-      { $set: { user1: { name: room!.user1.name, result: "", bot: room!.user1.bot, ready: true, socketId: room!.user1.socketId, goal: room!.user1.goal, canSend: otherReady ? !room?.user2.canSend : canSend } } }
+      { $set: { user1: { name: room!.user1.name, result: "", bot: room!.user1.bot, ready: true, socketId: room!.user1.socketId, goal: room!.user1.goal, canSend: canSend } } }
     );
     if (otherReady) {
       initiateChat(data, io, socket, canSend, room!.user1.goal, room!.user2.goal);
     }
   } else if (room?.user2?.name === data.user) {
     const otherReady = room!.user1.ready;
-    const canSend = getRandomPercent() < 50;
+    const canSend = room?.user2.canSend!;
     await globalThis.collections.chatSessions?.updateOne(
       { id: data.roomId },
-      { $set: { user2: { name: room!.user2.name, result: "", bot: room!.user2.bot, ready: true, socketId: room!.user2.socketId, goal: room!.user2.goal, canSend: otherReady ? !room?.user1.canSend : canSend } } }
+      { $set: { user2: { name: room!.user2.name, result: "", bot: room!.user2.bot, ready: true, socketId: room!.user2.socketId, goal: room!.user2.goal, canSend: canSend } } }
     );
     if (otherReady) {
       initiateChat(data, io, socket, canSend, room!.user1.goal, room!.user2.goal);

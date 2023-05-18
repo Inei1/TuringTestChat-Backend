@@ -64,7 +64,7 @@ export const result = async (data: any, socket: any) => {
       }
       await globalThis.collections.chatSessions?.updateOne(
         { id: data.roomId },
-        { $set: { user1: { name: room!.user1.name, result: data.result, bot: room!.user1.bot, ready: true, socketId: room!.user1.socketId, goal: room!.user1.goal, canSend: room!.user2.canSend } } }
+        { $set: { user1: { name: room!.user1.name, result: data.result, bot: room!.user1.bot, ready: true, socketId: room!.user1.socketId, goal: room!.user1.goal, canSend: room!.user1.canSend } } }
       );
     } else if (data.name === room?.user2.name) {
       if (!room?.user1?.bot) {
