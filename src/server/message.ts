@@ -50,8 +50,8 @@ export const message = async (data: any,
       }, (message?.length! / wordsPerSecond) * 1000);
     } else {
       io.to(room?.id!).emit("messageResponse", data);
-      io.to(room?.id!).emit("messageWaitingOther");
-      io.to(room?.id!).emit("messageWaitingSelf", { timeout: MESSAGE_TIMEOUT });
+      socket.emit("messageWaitingOther");
+      socket.broadcast.to(room?.id!).emit("messageWaitingSelf");
       globalThis.collections.chatSessions?.updateOne(
         { id: data.roomId },
         {

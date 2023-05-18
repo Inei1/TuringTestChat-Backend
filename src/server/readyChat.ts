@@ -3,7 +3,7 @@ import { Socket, Server as SocketServer } from 'socket.io';
 import { getRandomPercent } from "./getRandomPercent";
 
 // const CHAT_TIME = 150000;
-const CHAT_TIME = 5000;
+const CHAT_TIME = 15000;
 // const RESULT_TIME = 30000;
 const RESULT_TIME = 3000;
 
@@ -20,7 +20,7 @@ export const readyChat = async (data: any, io: SocketServer<DefaultEventsMap, De
       { $set: { user1: { name: room!.user1.name, result: "", bot: room!.user1.bot, ready: true, socketId: room!.user1.socketId, goal: room!.user1.goal, canSend: otherReady ? !room?.user2.canSend : canSend } } }
     );
     if (otherReady) {
-      initiateChat(data, io, socket, canSend);
+      initiateChat(data, io, socket, canSend, room!.user1.goal, room!.user2.goal);
     }
   } else if (room?.user2?.name === data.user) {
     const otherReady = room!.user1.ready;
@@ -30,23 +30,26 @@ export const readyChat = async (data: any, io: SocketServer<DefaultEventsMap, De
       { $set: { user2: { name: room!.user2.name, result: "", bot: room!.user2.bot, ready: true, socketId: room!.user2.socketId, goal: room!.user2.goal, canSend: otherReady ? !room?.user1.canSend : canSend } } }
     );
     if (otherReady) {
-      initiateChat(data, io, socket, canSend);
+      initiateChat(data, io, socket, canSend, room!.user1.goal, room!.user2.goal);
     }
   }
 }
 
 const initiateChat = async (data: any, io: SocketServer<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,
   socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,
-  canSend: boolean) => {
+  canSend: boolean, selfGoal: string, otherGoal: string) => {
   const endChatTime = Date.now() + CHAT_TIME;
   const endResultTime = Date.now() + CHAT_TIME + RESULT_TIME;
   await globalThis.collections.chatSessions?.updateOne(
     { id: data.roomId },
     { $set: { endChatTime: endChatTime, endResultTime: endResultTime } }
   );
-  socket.emit("startChat", { endChatTime: endChatTime, endResultTime: endResultTime, canSend: canSend });
-  socket.to(data.roomId).emit("startChat", { endChatTime: endChatTime, endResultTime: endResultTime, canSend: !canSend });
-  setTimeout(() => io.to(data.roomId).emit("endChat"), CHAT_TIME);
+  socket.emit("startChat", { endChatTime: endChatTime, endResultTime: endResultTime, canSend: canSend, goal: selfGoal });
+  socket.to(data.roomId).emit("startChat", { endChatTime: endChatTime, endResultTime: endResultTime, canSend: !canSend, goal: otherGoal });
+  setTimeout(() => {
+    io.to(data.roomId).emit("endChat");
+    io.to(data.roomId).emit("typingResponse", "");
+  }, CHAT_TIME);
   setTimeout(async () => {
     const newRoom = await globalThis.collections.chatSessions?.findOne(
       { id: data.roomId }
