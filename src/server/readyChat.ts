@@ -1,11 +1,8 @@
 import { DefaultEventsMap } from "socket.io/dist/typed-events";
 import { Socket, Server as SocketServer } from 'socket.io';
-import { getRandomPercent } from "./getRandomPercent";
 
-// const CHAT_TIME = 150000;
-const CHAT_TIME = 15000;
-// const RESULT_TIME = 30000;
-const RESULT_TIME = 3000;
+const CHAT_TIME = 150000;
+const RESULT_TIME = 30000;
 
 export const readyChat = async (data: any, io: SocketServer<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,
   socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>) => {

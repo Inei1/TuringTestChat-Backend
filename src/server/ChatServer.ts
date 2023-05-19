@@ -125,7 +125,9 @@ class ChatServer extends Server {
 
       socket.on("result", (data) => result(data, socket));
 
-      socket.on("typing", (data) => socket.broadcast.emit("typingResponse", "Chatter"));
+      socket.on("typing", () => socket.broadcast.emit("typingResponse", "Chatter"));
+
+      socket.on("typingStop", () => socket.broadcast.emit("typingResponse", ""));
 
       socket.on("readyChat", (data) => readyChat(data, io, socket));
 
