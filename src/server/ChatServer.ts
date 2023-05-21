@@ -138,8 +138,8 @@ class ChatServer extends Server {
 
       socket.on("disconnecting", async () => {
         socket.rooms.forEach((socketRoom) => {
+          socket.to(socketRoom).emit("otherLeft");
           this.emptyRooms = this.emptyRooms.filter((room) => {
-            console.log(socketRoom);
             return room != socketRoom;
           });
         });
