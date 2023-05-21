@@ -28,7 +28,7 @@ export const startRoom = async (username: any, emptyRooms: string[],
       );
       await globalThis.collections.chatSessions?.updateOne(
         { id: roomId },
-        { $set: { user2: { name: username, bot: false, result: null, ready: false, socketId: socket.id, goal: getRandomPercent() < 50 ? "Human" : "Bot", canSend: room?.user2.canSend! } } }
+        { $set: { user2: { name: username, bot: false, result: null, ready: false, socketId: socket.id, goal: getRandomPercent() < 50 ? "Human" : "Bot", canSend: room?.user2.canSend!, active: true } } }
       );
       socket.join(roomId);
       logger.info("Room joined: " + roomId);
@@ -66,15 +66,14 @@ export const startRoom = async (username: any, emptyRooms: string[],
             endResultTime: -1,
             id: roomId,
             messages: [],
-            user1: { name: username, bot: false, result: null, ready: false, socketId: socket.id, goal: getRandomPercent() < 50 ? "Human" : "Bot", canSend: user1Start },
-            user2: { name: "", bot: false, result: null, ready: false, socketId: "", goal: getRandomPercent() < 50 ? "Human" : "Bot", canSend: !user1Start }
+            user1: { name: username, bot: false, result: null, ready: false, socketId: socket.id, goal: getRandomPercent() < 50 ? "Human" : "Bot", canSend: user1Start, active: true },
+            user2: { name: "", bot: false, result: null, ready: false, socketId: "", goal: getRandomPercent() < 50 ? "Human" : "Bot", canSend: !user1Start, active: true }
           });
       } catch (error) {
         logger.err(error);
       }
       emptyRooms.push(roomId);
       socket.join(roomId);
-      socket.emit("roomFound", { roomId: roomId });
       logger.info("Room created: " + roomId);
       // 25% chance to immediately queue into a bot instead.
     } else {
@@ -89,8 +88,8 @@ export const startRoom = async (username: any, emptyRooms: string[],
             name: "System",
             message: generateSystemMessage()
           }],
-          user1: { name: "Bot", bot: true, result: null, ready: true, socketId: "", goal: getRandomPercent() < 50 ? "Human" : "Bot", canSend: botStart },
-          user2: { name: username, bot: false, result: null, ready: false, socketId: socket.id, goal: getRandomPercent() < 50 ? "Human" : "Bot", canSend: !botStart }
+          user1: { name: "Bot", bot: true, result: null, ready: true, socketId: "", goal: getRandomPercent() < 50 ? "Human" : "Bot", canSend: botStart, active: true },
+          user2: { name: username, bot: false, result: null, ready: false, socketId: socket.id, goal: getRandomPercent() < 50 ? "Human" : "Bot", canSend: !botStart, active: true }
         });
       } catch (error) {
         logger.err(error);

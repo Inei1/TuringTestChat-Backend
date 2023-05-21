@@ -3,13 +3,15 @@ import { Socket, Server as SocketServer } from 'socket.io';
 import { ChatCompletionRequestMessageRoleEnum, OpenAIApi } from "openai";
 import { UserMessage } from "../types";
 import { randomUUID } from "crypto";
+import { getRoomId } from "./getRoomId";
 
 export const message = async (data: any,
   io: SocketServer<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,
   socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,
   openai: OpenAIApi, wordsPerSecond: number) => {
+  const id = getRoomId(socket);
   const room = await globalThis.collections.chatSessions?.findOne(
-    { id: data.roomId }
+    { id: id }
   );
   const sendingUser = room?.user1.name === data.name ? room?.user1 : room?.user2;
   data.id = randomUUID();
@@ -19,7 +21,7 @@ export const message = async (data: any,
       const newMessages = room.messages;
       newMessages.push({ name: data.name, message: data.text });
       globalThis.collections.chatSessions?.updateOne(
-        { id: data.roomId },
+        { id: id },
         {
           $push: { messages: { name: data.name, message: data.text } },
           $set: { "user1.canSend": !room!.user1.canSend, "user2.canSend": !room!.user2.canSend }
@@ -40,7 +42,7 @@ export const message = async (data: any,
             text: completion.data.choices[0].message?.content
           });
           globalThis.collections.chatSessions?.updateOne(
-            { id: data.roomId },
+            { id: id },
             { $push: { messages: { name: "Bot", message: message! } } }
           );
         }
@@ -51,7 +53,7 @@ export const message = async (data: any,
       socket.emit("messageWaitingOther");
       socket.broadcast.to(room?.id!).emit("messageWaitingSelf");
       globalThis.collections.chatSessions?.updateOne(
-        { id: data.roomId },
+        { id: id },
         {
           $push: { messages: { name: data.name, message: data.text } },
           $set: { "user1.canSend": !room!.user1.canSend, "user2.canSend": !room!.user2.canSend }

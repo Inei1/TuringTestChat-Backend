@@ -20,6 +20,7 @@ import { readyChat } from './readyChat';
 import { result } from './result';
 import { message } from './message';
 import { startRoom } from './startRoom';
+import { getRoomId } from './getRoomId';
 
 const LocalStrategy = passportLocal.Strategy;
 
@@ -137,11 +138,37 @@ class ChatServer extends Server {
       });
 
       socket.on("disconnecting", async () => {
-        socket.rooms.forEach((socketRoom) => {
-          socket.to(socketRoom).emit("otherLeft");
-          this.emptyRooms = this.emptyRooms.filter((room) => {
-            return room != socketRoom;
+        const id = getRoomId(socket);
+        const room = await globalThis.collections.chatSessions?.findOne(
+          { id: id }
+        );
+        if (room!.endChatTime >= Date.now()) {
+          // Remove points from user
+          socket.to(id).emit("otherLeft");
+          if (room?.user1.socketId === socket.id) {
+            await globalThis.collections.chatSessions?.updateOne(
+              { id: id },
+              {
+                $set: { "user1.active": false }
+              }
+            );
+          } else if (room?.user2.socketId === socket.id) {
+            await globalThis.collections.chatSessions?.updateOne(
+              { id: id },
+              {
+                $set: { "user2.active": false }
+              }
+            );
+          }
+        } else if (room!.endResultTime >= Date.now()) {
+          // Did not pick
+          socket.to(id).emit("otherResult", {
+            result: "Did not pick",
+            points: 10,
           });
+        }
+        this.emptyRooms.filter((room) => {
+          return room !== id;
         });
       });
 

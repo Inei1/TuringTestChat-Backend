@@ -30,6 +30,7 @@ export interface ChatUser {
   result: string | null;
   ready: boolean;
   canSend: boolean;
+  active: boolean;
 }
 
 export interface ChatSession {

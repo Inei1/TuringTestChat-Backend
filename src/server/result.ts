@@ -1,3 +1,5 @@
+import { getRoomId } from "./getRoomId";
+
 const MAJOR_WRONG_POINTS = -3;
 const MINOR_WRONG_POINTS = -1;
 const UNKNOWN_SELF_POINTS = 0;
@@ -6,17 +8,18 @@ const MINOR_CORRECT_POINTS = 4;
 const MAJOR_CORRECT_POINTS = 10;
 
 export const result = async (data: any, socket: any) => {
+  const id = getRoomId(socket);
   const endTime = await globalThis.collections.chatSessions?.findOne(
-    { id: data.roomId }
+    { id: id }
   );
   // add another second to send response
-  if (endTime!.endChatTime <= Date.now() && endTime!.endResultTime + 1000 >= Date.now()) {
-    // authenticate user and socket
+  if (endTime!.endResultTime + 1000 >= Date.now()) {
+    // TODO: authenticate user and socket
     let otherPoints = 0;
     let selfPoints = 0;
     let other = "";
     const room = await globalThis.collections.chatSessions?.findOne(
-      { id: data.roomId }
+      { id: id }
     );
     if (data.name === room?.user1.name) {
       if (!room?.user2?.bot) {
@@ -63,8 +66,21 @@ export const result = async (data: any, socket: any) => {
         }
       }
       await globalThis.collections.chatSessions?.updateOne(
-        { id: data.roomId },
-        { $set: { user1: { name: room!.user1.name, result: data.result, bot: room!.user1.bot, ready: true, socketId: room!.user1.socketId, goal: room!.user1.goal, canSend: room!.user1.canSend } } }
+        { id: id },
+        {
+          $set: {
+            user1: {
+              name: room!.user1.name,
+              result: data.result,
+              bot: room!.user1.bot,
+              ready: true,
+              socketId: room!.user1.socketId,
+              goal: room!.user1.goal,
+              canSend: room!.user1.canSend,
+              active: true
+            }
+          }
+        }
       );
     } else if (data.name === room?.user2.name) {
       if (!room?.user1?.bot) {
@@ -111,12 +127,25 @@ export const result = async (data: any, socket: any) => {
         }
       }
       await globalThis.collections.chatSessions?.updateOne(
-        { id: data.roomId },
-        { $set: { user2: { name: room!.user2!.name, result: data.result, bot: room!.user2!.bot, ready: true, socketId: room!.user2.socketId, goal: room!.user2.goal, canSend: room!.user2.canSend } } }
+        { id: id },
+        {
+          $set: {
+            user2: {
+              name: room!.user2!.name,
+              result: data.result,
+              bot: room!.user2!.bot,
+              ready: true,
+              socketId: room!.user2.socketId,
+              goal: room!.user2.goal,
+              canSend: room!.user2.canSend,
+              active: true
+            }
+          }
+        }
       );
     }
 
-    socket.broadcast.emit("otherResult", {
+    socket.to(room?.id).emit("otherResult", {
       result: data.result,
       points: otherPoints
     });
