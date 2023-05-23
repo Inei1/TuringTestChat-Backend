@@ -1,12 +1,13 @@
 import { DefaultEventsMap } from "socket.io/dist/typed-events";
 import { Socket, Server as SocketServer } from 'socket.io';
 import { getRoomId } from "./getRoomId";
-
-const CHAT_TIME = 150000;
-const RESULT_TIME = 30000;
+import { initiateChat } from "./initiateChat";
+import { sendBotMessage } from "./sendBotMessage";
+import { OpenAIApi } from "openai";
 
 export const readyChat = async (data: any, io: SocketServer<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,
-  socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>) => {
+  socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,
+  openai: OpenAIApi) => {
   const id = getRoomId(socket);
   const room = await globalThis.collections.chatSessions?.findOne(
     { id: id }
@@ -16,74 +17,32 @@ export const readyChat = async (data: any, io: SocketServer<DefaultEventsMap, De
     const canSend = room?.user1.canSend!;
     await globalThis.collections.chatSessions?.updateOne(
       { id: id },
-      { $set: { user1: { name: room!.user1.name, result: "", bot: room!.user1.bot, ready: true, socketId: room!.user1.socketId, goal: room!.user1.goal, canSend: canSend, active: true } } }
+      { $set: { user1: { name: room!.user1.name, result: "", bot: room!.user1.bot, ready: true, socketId: room!.user1.socketId, goal: room!.user1.goal, canSend: canSend, active: true, wordsPerSecond: room?.user1.wordsPerSecond! } } }
     );
     if (otherReady) {
-      initiateChat(id, io, socket, canSend, room!.user1.goal, room!.user2.goal, true);
+      await initiateChat(id, io, socket, canSend, room!.user1.goal, room!.user2.goal, true);
+      if (room?.user2.bot && room?.user2.canSend) {
+        const newRoom = await globalThis.collections.chatSessions?.findOne(
+          { id: id }
+        );
+        await sendBotMessage(io, openai, newRoom!, id);
+      }
     }
   } else if (room?.user2?.name === data.user) {
     const otherReady = room!.user1.ready;
     const canSend = room?.user2.canSend!;
     await globalThis.collections.chatSessions?.updateOne(
       { id: id },
-      { $set: { user2: { name: room!.user2.name, result: "", bot: room!.user2.bot, ready: true, socketId: room!.user2.socketId, goal: room!.user2.goal, canSend: canSend, active: true } } }
+      { $set: { user2: { name: room!.user2.name, result: "", bot: room!.user2.bot, ready: true, socketId: room!.user2.socketId, goal: room!.user2.goal, canSend: canSend, active: true, wordsPerSecond: room?.user2.wordsPerSecond! } } }
     );
     if (otherReady) {
-      initiateChat(id, io, socket, canSend, room!.user2.goal, room!.user1.goal, true);
+      await initiateChat(id, io, socket, canSend, room!.user2.goal, room!.user1.goal, true);
+      if (room?.user1.bot && room?.user1.canSend) {
+        const newRoom = await globalThis.collections.chatSessions?.findOne(
+          { id: id }
+        );
+        await sendBotMessage(io, openai, newRoom!, id);
+      }
     }
   }
-}
-
-export const initiateChat = async (id: any, io: SocketServer<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,
-  socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,
-  canSend: boolean, selfGoal: string, otherGoal: string, initiateSelf: boolean) => {
-  const endChatTime = Date.now() + CHAT_TIME;
-  const endResultTime = Date.now() + CHAT_TIME + RESULT_TIME;
-  await globalThis.collections.chatSessions?.updateOne(
-    { id: id },
-    { $set: { endChatTime: endChatTime, endResultTime: endResultTime } }
-  );
-  if (initiateSelf) {
-    socket.emit("startChat", { endChatTime: endChatTime, endResultTime: endResultTime, canSend: canSend, goal: selfGoal });
-    socket.to(id).emit("startChat", { endChatTime: endChatTime, endResultTime: endResultTime, canSend: !canSend, goal: otherGoal });
-  } else {
-    io.to(id).emit("startChat", { endChatTime: endChatTime, endResultTime: endResultTime, canSend: !canSend, goal: otherGoal });
-  }
-  setTimeout(() => {
-    io.to(id).emit("endChat");
-    io.to(id).emit("typingResponse", "");
-  }, CHAT_TIME);
-  setTimeout(async () => {
-    const newRoom = await globalThis.collections.chatSessions?.findOne(
-      { id: id }
-    );
-    if (newRoom?.user1.result === "" && newRoom?.user1.active) {
-      io.to(newRoom?.user2.socketId).emit("noResult");
-      io.to(newRoom?.user1.socketId).emit("selfResult", {
-        points: -3,
-        other: newRoom?.user2.bot ? "Bot" : "Human",
-        result: "",
-      });
-    } else {
-      io.to(newRoom!.user2.socketId).emit("completeChat");
-    }
-    if (newRoom?.user2.result === "" && newRoom?.user2.active) {
-      io.to(newRoom?.user1.socketId).emit("noResult");
-      io.to(newRoom?.user2.socketId).emit("selfResult", {
-        points: -3,
-        other: newRoom?.user1.bot ? "Bot" : "Human",
-        result: "",
-      });
-    } else {
-      io.to(newRoom!.user1.socketId).emit("completeChat");
-    }
-  }, CHAT_TIME + RESULT_TIME);
-  setTimeout(async () => {
-    io.socketsLeave(id);
-    const newRoom = await globalThis.collections.chatSessions?.findOne(
-      { id: id }
-    );
-    await globalThis.collections.pastChatSessions?.insertOne(newRoom!);
-    await globalThis.collections.chatSessions?.deleteOne(newRoom!);
-  }, CHAT_TIME + RESULT_TIME + 1000);
 }

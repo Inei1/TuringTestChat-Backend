@@ -120,9 +120,9 @@ class ChatServer extends Server {
     io.on("connection", (socket) => {
       logger.info("User connected: " + socket.id);
 
-      socket.on("startRoom", (data) => startRoom(data, this.emptyRooms, socket, io));
+      socket.on("startRoom", (data) => startRoom(data, this.emptyRooms, socket, io, this.openai));
 
-      socket.on("message", (data) => message(data, io, socket, this.openai, this.wordsPerSecond));
+      socket.on("message", (data) => message(data, io, socket, this.openai));
 
       socket.on("result", (data) => result(data, socket));
 
@@ -130,7 +130,7 @@ class ChatServer extends Server {
 
       socket.on("typingStop", () => socket.broadcast.emit("typingResponse", ""));
 
-      socket.on("readyChat", (data) => readyChat(data, io, socket));
+      socket.on("readyChat", (data) => readyChat(data, io, socket, this.openai));
 
       socket.on("cancelChat", (data) => {
         this.emptyRooms = this.emptyRooms.filter((room) => room != data.roomId);

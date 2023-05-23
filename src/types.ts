@@ -31,6 +31,8 @@ export interface ChatUser {
   ready: boolean;
   canSend: boolean;
   active: boolean;
+  // only used when bot
+  wordsPerSecond: number;
 }
 
 export interface ChatSession {
