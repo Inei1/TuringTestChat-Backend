@@ -142,7 +142,7 @@ class ChatServer extends Server {
         const room = await globalThis.collections.chatSessions?.findOne(
           { id: id }
         );
-        if (room!.endChatTime >= Date.now()) {
+        if (room && room.endChatTime >= Date.now()) {
           // Remove points from user
           socket.to(id).emit("otherLeft");
           if (room?.user1.socketId === socket.id) {
@@ -160,7 +160,7 @@ class ChatServer extends Server {
               }
             );
           }
-        } else if (room!.endResultTime >= Date.now()) {
+        } else if (room && room!.endResultTime >= Date.now()) {
           // Did not pick
           socket.to(id).emit("otherResult", {
             result: "Did not pick",
