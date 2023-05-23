@@ -2,7 +2,7 @@ import { DefaultEventsMap } from "socket.io/dist/typed-events";
 import { Socket, Server as SocketServer } from 'socket.io';
 import { getRoomId } from "./getRoomId";
 
-const CHAT_TIME = 150000;
+const CHAT_TIME = 1500;
 const RESULT_TIME = 30000;
 
 export const readyChat = async (data: any, io: SocketServer<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,
@@ -29,7 +29,7 @@ export const readyChat = async (data: any, io: SocketServer<DefaultEventsMap, De
       { $set: { user2: { name: room!.user2.name, result: "", bot: room!.user2.bot, ready: true, socketId: room!.user2.socketId, goal: room!.user2.goal, canSend: canSend, active: true } } }
     );
     if (otherReady) {
-      initiateChat(id, io, socket, canSend, room!.user1.goal, room!.user2.goal);
+      initiateChat(id, io, socket, canSend, room!.user2.goal, room!.user1.goal);
     }
   }
 }

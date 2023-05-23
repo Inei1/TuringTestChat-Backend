@@ -21,127 +21,83 @@ export const result = async (data: any, socket: any) => {
     const room = await globalThis.collections.chatSessions?.findOne(
       { id: id }
     );
-    if (data.name === room?.user1.name) {
-      if (!room?.user2?.bot) {
-        other = "Human";
-        if (data.result === "Definitely a human") {
-          otherPoints = MAJOR_WRONG_POINTS;
-          selfPoints = MAJOR_CORRECT_POINTS;
-        } else if (data.result === "Possibly a human") {
-          otherPoints = MINOR_WRONG_POINTS;
-          selfPoints = MINOR_CORRECT_POINTS;
-        } else if (data.result === "Unknown") {
-          otherPoints = UNKNOWN_OTHER_POINTS;
-          selfPoints = UNKNOWN_SELF_POINTS;
-        } else if (data.result === "Possibly a bot") {
-          otherPoints = MINOR_CORRECT_POINTS;
-          selfPoints = MINOR_WRONG_POINTS;
-        } else if (data.result === "Definitely a bot") {
-          otherPoints = MAJOR_CORRECT_POINTS;
-          selfPoints = MAJOR_WRONG_POINTS;
-        } else {
-          otherPoints = MAJOR_CORRECT_POINTS;
-          selfPoints = MAJOR_WRONG_POINTS;
-        }
-      } else {
+    const receiver = data.name === room?.user1.name ? room?.user2 : room?.user1;
+
+    if (data.result === "Definitely a human") {
+      if (receiver?.bot) {
         other = "Bot";
-        if (data.result === "Definitely a human") {
-          otherPoints = MAJOR_CORRECT_POINTS;
-          selfPoints = MAJOR_WRONG_POINTS;
-        } else if (data.result === "Possibly a human") {
-          otherPoints = MINOR_CORRECT_POINTS;
-          selfPoints = MINOR_WRONG_POINTS;
-        } else if (data.result === "Unknown") {
-          otherPoints = UNKNOWN_OTHER_POINTS;
-          selfPoints = UNKNOWN_SELF_POINTS;
-        } else if (data.result === "Possibly a bot") {
-          otherPoints = MINOR_WRONG_POINTS;
-          selfPoints = MINOR_CORRECT_POINTS;
-        } else if (data.result === "Definitely a bot") {
-          otherPoints = MAJOR_WRONG_POINTS;
-          selfPoints = MAJOR_CORRECT_POINTS;
-        } else {
-          otherPoints = MAJOR_CORRECT_POINTS;
-          selfPoints = MAJOR_WRONG_POINTS;
-        }
+        selfPoints = MAJOR_WRONG_POINTS;
+      } else {
+        other = "Human";
+        selfPoints = MAJOR_CORRECT_POINTS;
       }
+      if (receiver?.goal === "Human") {
+        otherPoints = MAJOR_CORRECT_POINTS;
+      } else {
+        otherPoints = MAJOR_WRONG_POINTS;
+      }
+    } else if (data.result === "Possibly a human") {
+      if (receiver?.bot) {
+        other = "Bot";
+        selfPoints = MINOR_WRONG_POINTS;
+      } else {
+        other = "Human";
+        selfPoints = MINOR_CORRECT_POINTS;
+      }
+      if (receiver?.goal === "Human") {
+        otherPoints = MINOR_CORRECT_POINTS;
+      } else {
+        otherPoints = MINOR_WRONG_POINTS;
+      }
+    } else if (data.result === "Unknown") {
+      if (receiver?.bot) {
+        other = "Bot";
+        selfPoints = UNKNOWN_SELF_POINTS;
+      } else {
+        other = "Human";
+        selfPoints = UNKNOWN_SELF_POINTS;
+      }
+      if (receiver?.goal === "Human") {
+        otherPoints = UNKNOWN_OTHER_POINTS;
+      } else {
+        otherPoints = UNKNOWN_OTHER_POINTS;
+      }
+    } else if (data.result === "Possibly a bot") {
+      if (receiver?.bot) {
+        other = "Bot";
+        selfPoints = MINOR_CORRECT_POINTS;
+      } else {
+        other = "Human";
+        selfPoints = MINOR_WRONG_POINTS;
+      }
+      if (receiver?.goal === "Human") {
+        otherPoints = MINOR_WRONG_POINTS;
+      } else {
+        otherPoints = MINOR_CORRECT_POINTS;
+      }
+    } else if (data.result === "Definitely a bot") {
+      if (receiver?.bot) {
+        other = "Bot";
+        selfPoints = MAJOR_CORRECT_POINTS
+      } else {
+        other = "Human";
+        selfPoints = MAJOR_WRONG_POINTS;
+      }
+      if (receiver?.goal === "Human") {
+        otherPoints = MAJOR_WRONG_POINTS;
+      } else {
+        otherPoints = MAJOR_CORRECT_POINTS;
+      }
+    }
+    if (data.name === room?.user1.name) {
       await globalThis.collections.chatSessions?.updateOne(
         { id: id },
-        {
-          $set: {
-            user1: {
-              name: room!.user1.name,
-              result: data.result,
-              bot: room!.user1.bot,
-              ready: true,
-              socketId: room!.user1.socketId,
-              goal: room!.user1.goal,
-              canSend: room!.user1.canSend,
-              active: true
-            }
-          }
-        }
+        { $set: { "user1.result": data.result } }
       );
     } else if (data.name === room?.user2.name) {
-      if (!room?.user1?.bot) {
-        other = "Human";
-        if (data.result === "Definitely a human") {
-          otherPoints = MAJOR_WRONG_POINTS;
-          selfPoints = MAJOR_CORRECT_POINTS;
-        } else if (data.result === "Possibly a human") {
-          otherPoints = MINOR_WRONG_POINTS;
-          selfPoints = MINOR_CORRECT_POINTS;
-        } else if (data.result === "Unknown") {
-          otherPoints = UNKNOWN_OTHER_POINTS;
-          selfPoints = UNKNOWN_SELF_POINTS;
-        } else if (data.result === "Possibly a bot") {
-          otherPoints = MINOR_CORRECT_POINTS;
-          selfPoints = MINOR_WRONG_POINTS;
-        } else if (data.result === "Definitely a bot") {
-          otherPoints = MAJOR_CORRECT_POINTS;
-          selfPoints = MAJOR_WRONG_POINTS;
-        } else {
-          otherPoints = MAJOR_CORRECT_POINTS;
-          selfPoints = MAJOR_WRONG_POINTS;
-        }
-      } else {
-        other = "Bot";
-        if (data.result === "Definitely a human") {
-          otherPoints = MAJOR_CORRECT_POINTS;
-          selfPoints = MAJOR_WRONG_POINTS;
-        } else if (data.result === "Possibly a human") {
-          otherPoints = MINOR_CORRECT_POINTS;
-          selfPoints = MINOR_WRONG_POINTS;
-        } else if (data.result === "Unknown") {
-          otherPoints = UNKNOWN_OTHER_POINTS;
-          selfPoints = UNKNOWN_SELF_POINTS;
-        } else if (data.result === "Possibly a bot") {
-          otherPoints = MINOR_WRONG_POINTS;
-          selfPoints = MINOR_CORRECT_POINTS;
-        } else if (data.result === "Definitely a bot") {
-          otherPoints = MAJOR_WRONG_POINTS;
-          selfPoints = MAJOR_CORRECT_POINTS;
-        } else {
-          otherPoints = MAJOR_CORRECT_POINTS;
-          selfPoints = MAJOR_WRONG_POINTS;
-        }
-      }
       await globalThis.collections.chatSessions?.updateOne(
         { id: id },
-        {
-          $set: {
-            user2: {
-              name: room!.user2!.name,
-              result: data.result,
-              bot: room!.user2!.bot,
-              ready: true,
-              socketId: room!.user2.socketId,
-              goal: room!.user2.goal,
-              canSend: room!.user2.canSend,
-              active: true
-            }
-          }
-        }
+        { $set: { "user2.result": data.result } }
       );
     }
 

@@ -57,7 +57,7 @@ export const startRoom = async (username: any, emptyRooms: string[],
     const botChat = getRandomPercent();
     // 75% chance to queue like normal.
     //if (botChat >= 25) {
-    if (false) {
+    if (true) {
       const user1Start = getRandomPercent() < 50;
       try {
         await globalThis.collections.chatSessions?.insertOne(
