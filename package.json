@@ -47,6 +47,7 @@
     "axios": "^1.2.5",
     "bcrypt": "^5.1.0",
     "body-parser": "^1.20.2",
+    "city-timezones": "^1.2.1",
     "connect-mongo": "^5.0.0",
     "cookie": "^0.5.0",
     "cors": "^2.8.5",

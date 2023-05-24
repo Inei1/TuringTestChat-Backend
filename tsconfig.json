@@ -12,6 +12,7 @@
     "emitDecoratorMetadata": true,
     "moduleResolution": "node",
     "importHelpers": true,
+    "esModuleInterop": true,
     "types": [
       "node"
     ],

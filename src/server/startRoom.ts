@@ -37,7 +37,8 @@ const createNewRoom = async (username: any, emptyRooms: string[],
   const roomId = randomUUID();
   const botChat = getRandomPercent();
   // 75% chance to queue like normal.
-  if (botChat <= 75) {
+  //if (botChat <= 75) {
+  if (false) {
     const user1Start = getRandomPercent() < 50;
     try {
       await globalThis.collections.chatSessions?.insertOne(
@@ -58,7 +59,7 @@ const createNewRoom = async (username: any, emptyRooms: string[],
     // 25% chance to immediately queue into a bot instead.
   } else {
     const endTime = Date.now() + WAITING_MILLIS;
-    const botStart = getRandomPercent() < 50;
+    const botStart = true; //getRandomPercent() < 50;
     try {
       await globalThis.collections.chatSessions?.insertOne({
         endChatTime: -1,

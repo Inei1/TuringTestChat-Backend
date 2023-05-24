@@ -6,15 +6,15 @@ var https = require('https');
 var http = require('http');
 import { readFileSync } from 'fs';
 import { Configuration, OpenAIApi } from 'openai';
-import * as dotenv from 'dotenv';
+import dotenv from 'dotenv';
 import { connectToDatabase } from './connectToDatabase';
-import * as passport from 'passport';
-import * as session from 'express-session';
+import passport from 'passport';
+import session from 'express-session';
 import LoginController from '../controllers/LoginController';
 import AccountController from '../controllers/AccountController';
-import * as passportLocal from "passport-local";
+import passportLocal from "passport-local";
 import { ObjectId } from "mongodb";
-import * as bcrypt from "bcrypt";
+import bcrypt from "bcrypt";
 import MongoStore = require('connect-mongo');
 import { readyChat } from './readyChat';
 import { result } from './result';
@@ -170,6 +170,7 @@ class ChatServer extends Server {
         this.emptyRooms.filter((room) => {
           return room !== id;
         });
+        socket.emit("disconnected");
       });
 
       socket.on("disconnect", () => {
