@@ -17,6 +17,9 @@ export const message = async (data: any,
   data.key = randomUUID();
   if (room!.endChatTime >= Date.now() && sendingUser?.canSend) {
     if ((room?.user1.name === data.name && room?.user2.bot) || (room?.user2.name === data.name && room?.user1.bot)) {
+      if (data.text.length > 200) {
+        data.text = data.text.substring(0, 200);
+      }
       io.to(room?.id!).emit("messageResponse", data);
       socket.emit("messageWaitingOther");
       const newMessages = room.messages;
@@ -33,6 +36,9 @@ export const message = async (data: any,
       );
       sendBotMessage(io, openai, newRoom!, id);
     } else {
+      if (data.text.length > 200) {
+        data.text = data.text.substring(0, 200);
+      }
       io.to(room?.id!).emit("messageResponse", data);
       socket.emit("messageWaitingOther");
       socket.broadcast.to(room?.id!).emit("messageWaitingSelf");

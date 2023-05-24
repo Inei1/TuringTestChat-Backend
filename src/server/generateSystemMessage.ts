@@ -404,7 +404,7 @@ export const generateSystemMessage = () => {
   const dateMessage = `The time is ${timeLocation}. It will never change. You don't specify the seconds. `;
   const grammarMessage = "You make typos frequently. ";
   const botPersonality = _.sampleSize(personalities, 3);
-  const biographyMessage = `If someone asks you personal information, make up something believable. `;
+  const biographyMessage = `You are a ${occupation}. You work at ${company}. You are located in ${location}`;
   const randomLike = _.sample(hobbies);
   const randomWant = _.sample(thingsToDo);
   const personalityMessage = `Your personality traits are ${botPersonality}. You like to ${randomLike}. You want to ${randomWant}. `;
