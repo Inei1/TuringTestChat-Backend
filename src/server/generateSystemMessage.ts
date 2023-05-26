@@ -3,379 +3,103 @@ import { getRandomPercent } from "./getRandomPercent";
 import cityTimezones from "city-timezones";
 
 const personalities: string[] = [
-  "Adventurous",
-  "Ambitious",
-  "Analytical",
-  "Artistic",
-  "Assertive",
-  "Calm",
-  "Charismatic",
-  "Charming",
-  "Compassionate",
-  "Confident",
-  "Creative",
-  "Curious",
-  "Determined",
-  "Depressed",
-  "Diligent",
-  "Easygoing",
-  "Empathetic",
-  "Energetic",
-  "Enthusiastic",
-  "Flexible",
   "Friendly",
-  "Generous",
-  "Gentle",
-  "Honest",
+  "Professional",
+  "Playful",
+  "Supportive",
+  "Informative",
+  "Creative",
+  "Analytical",
+  "Enthusiastic",
+  "Calm",
+  "Authoritative",
+  "Inquisitive",
   "Humorous",
-  "Independent",
-  "Innovative",
-  "Intelligent",
-  "Kind",
-  "Logical",
-  "Loyal",
-  "Open-minded",
-  "Optimistic",
-  "Patient",
-  "Persistent",
-  "Practical",
-  "Reliable",
-  "Resilient",
-  "Resourceful",
-  "Self-disciplined",
-  "Sociable",
-  "Sympathetic",
+  "Empathetic",
+  "Confident",
+  "Inspirational",
+  "Sarcastic",
   "Thoughtful",
-  "Trustworthy",
-  "Versatile",
-  "Warm",
+  "Optimistic",
+  "Pragmatic",
+  "Curious",
+  "Energetic",
   "Witty",
-  "Zestful"
+  "Patient",
+  "Adventurous",
+  "Assertive",
+  "Quirky",
+  "Diplomatic",
+  "Inventive",
+  "Humble",
+  "Charismatic",
+  "Logical",
+  "Nurturing",
+  "Imaginative",
+  "Respectful",
+  "Serious",
+  "Easygoing",
+  "Meticulous",
+  "Bold",
+  "Cheerful",
+  "Methodical",
+  "Determined",
+  "Perceptive",
+  "Tenacious",
+  "Whimsical",
+  "Stoic",
+  "Lively",
+  "Analytical",
+  "Intuitive",
+  "Sincere",
+  "Dynamic",
+  "Romantic",
+  "Grounded",
+  "Adaptable",
+  "Visionary",
 ];
 
-const techCompanyOccupations: string[] = [
-  "Software Engineer",
-  "Data Scientist",
-  "Product Manager",
-  "UX/UI Designer",
-  "Front-end Developer",
-  "Back-end Developer",
-  "Full Stack Developer",
-  "DevOps Engineer",
-  "Quality Assurance Engineer",
-  "Technical Support Specialist",
-  "Network Administrator",
-  "Database Administrator",
-  "Information Security Analyst",
-  "IT Project Manager",
-  "Business Analyst",
-  "Scrum Master",
-  "Systems Analyst",
-  "Cloud Architect",
-  "Machine Learning Engineer",
-  "Artificial Intelligence Researcher",
-  "Data Engineer",
-  "Technical Writer",
-  "IT Consultant",
-  "IT Trainer",
-  "Cybersecurity Analyst",
-  "UI/UX Researcher",
-  "IT Operations Manager",
-  "Network Engineer",
-  "IT Technician",
-  "Systems Administrator",
-  "IT Auditor",
-  "Blockchain Developer",
-  "Mobile App Developer",
-  "Embedded Systems Engineer",
-  "Robotics Engineer",
-  "IT Sales Representative",
-  "Digital Marketing Specialist",
-  "Content Strategist",
-  "Social Media Manager",
-  "SEO Specialist",
-  "UX/UI Architect",
-];
-
-const techCompanies: string[] = [
-  "Google",
-  "Apple",
-  "Microsoft",
-  "Amazon",
-  "Facebook",
-  "IBM",
-  "Intel",
-  "Oracle",
-  "Cisco",
-  "Adobe",
-  "Salesforce",
-  "HP",
-  "Dell",
-  "Sony",
-  "Samsung",
-  "Lenovo",
-  "Nvidia",
-  "Qualcomm",
-  "Netflix",
-  "Twitter",
-  "Uber",
-  "Airbnb",
-  "Snapchat",
-  "Tesla",
-  "SpaceX",
-  "Slack",
-  "Zoom",
-  "Etsy",
-  "Reddit",
-  "Pinterest",
-  "Dropbox",
-  "LinkedIn",
-  "Spotify",
-  "Square",
-  "Mozilla",
-  "GitLab",
-  "Atlassian",
-  "TikTok",
-  "Alibaba",
-  "Tencent",
-  "Baidu",
-  "Intel",
-  "PayPal",
-];
-
-const retailStoreOccupations: string[] = [
-  "Store Manager",
-  "Sales Associate",
-  "Cashier",
-  "Visual Merchandiser",
-  "Stock Clerk",
-  "Customer Service Representative",
-  "Loss Prevention Officer",
-  "Assistant Manager",
-  "Department Supervisor",
-  "Retail Buyer",
-  "Inventory Manager",
-  "Visual Display Coordinator",
-  "E-commerce Specialist",
-  "Warehouse Associate",
-  "Fulfillment Specialist",
-  "Receiving Clerk",
-  "Floor Supervisor",
-  "Retail Sales Manager",
-  "Brand Ambassador",
-  "Retail Operations Manager",
-  "Store Planner",
-  "Retail Analyst",
-  "Customer Experience Manager",
-  "Product Demonstrator",
-  "Store Greeter",
-  "Retail Trainer",
-  "Cash Office Assistant",
-  "Order Fulfillment Associate",
-  "Returns Clerk",
-  "Tailor/Seamstress",
-  "Merchandise Planner",
-  "Gift Wrapper",
-  "Stockroom Supervisor",
-  "Loss Prevention Manager",
-  "Visual Merchandising Manager",
-  "Retail Account Executive",
-  "Point of Sale (POS) Specialist",
-  "Customer Service Manager",
-  "Retail Marketing Coordinator",
-  "Fashion Stylist",
-];
-
-const retailStores: string[] = [
-  "Walmart",
-  "Target",
-  "Amazon",
-  "Costco",
-  "Macy's",
-  "Best Buy",
-  "Home Depot",
-  "Lowe's",
-  "Kohl's",
-  "IKEA",
-  "Nordstrom",
-  "Gap",
-  "Forever 21",
-  "H&M",
-  "Zara",
-  "Foot Locker",
-  "PetSmart",
-  "Barnes & Noble",
-  "GameStop",
-  "Ulta Beauty",
-  "Sephora",
-  "CVS",
-  "Walgreens",
-  "Whole Foods Market",
-  "Trader Joe's",
-  "Starbucks",
-  "Dunkin' Donuts",
-  "McDonald's",
-  "Subway",
-  "Chipotle",
-  "Panera Bread",
-  "Pizza Hut",
-  "Domino's",
-  "Burger King",
-  "KFC",
-  "Taco Bell",
-  "Papa John's",
-  "Dollar Tree",
-  "Family Dollar",
-  "Party City",
-  "Dick's Sporting Goods",
-  "Office Depot",
-];
-
-const techCompanyLocationsUSA: string[] = [
-  "San Francisco, California",
-  "Seattle, Washington",
-  "Austin, Texas",
-  "Boston, Massachusetts",
-  "New York City, New York",
-  "Los Angeles, California",
-  "San Diego, California",
-  "Denver, Colorado",
-  "Raleigh, North Carolina",
-  "Chicago, Illinois",
-  "Atlanta, Georgia",
-  "Portland, Oregon",
-  "Dallas, Texas",
-  "Houston, Texas",
-  "Washington, D.C.",
-  "Salt Lake City, Utah",
-  "Phoenix, Arizona",
-  "Minneapolis, Minnesota",
-  "Detroit, Michigan",
-  "Philadelphia, Pennsylvania",
-  "Miami, Florida",
-  "Charlotte, North Carolina",
-  "Columbus, Ohio",
-  "Nashville, Tennessee",
-  "Pittsburgh, Pennsylvania",
-  "Indianapolis, Indiana",
-  "Orlando, Florida",
-  "Tampa, Florida",
-  "Kansas City, Missouri",
-];
-
-const hobbies: string[] = [
-  "Reading",
-  "Writing",
-  "Painting",
-  "Drawing",
-  "Photography",
-  "Playing an instrument",
-  "Singing",
-  "Dancing",
-  "Cooking",
-  "Baking",
-  "Gardening",
-  "Hiking",
-  "Camping",
-  "Running",
-  "Cycling",
-  "Yoga",
-  "Meditation",
-  "Playing sports",
-  "Swimming",
-  "Fishing",
-  "Knitting",
-  "Crocheting",
-  "Woodworking",
-  "Model building",
-  "Collecting stamps",
-  "Collecting coins",
-  "Chess",
-  "Puzzles",
-  "Video gaming",
-  "Board games",
-  "Traveling",
-  "Learning languages",
-  "Volunteering",
-  "Watching movies",
-  "Watching TV shows",
-  "Listening to music",
-  "Podcasting",
-  "Blogging",
-  "Fashion design",
-  "Makeup artistry",
-  "Interior decorating",
-  "Calligraphy",
-  "DIY crafts",
-  "Pottery",
-  "Sculpting",
-  "Skydiving",
-  "Scuba diving",
-  "Rock climbing",
-  "Surfing",
-];
-
-const thingsToDo: string[] = [
-  "Travel the world",
-  "Start a business",
-  "Learn a new language",
-  "Learn to play a musical instrument",
-  "Write a book",
-  "Run a marathon",
-  "Learn to cook gourmet meals",
-  "Volunteer for a cause",
-  "Learn to dance",
-  "Get fit and stay healthy",
-  "Learn to paint or draw",
-  "Build a house",
-  "Achieve financial independence",
-  "Learn to code",
-  "Go skydiving",
-  "Spend more time with family and loved ones",
-  "Learn to meditate",
-  "Master a new skill",
-  "Take up a new hobby",
-  "Explore new career opportunities",
-  "Give back to the community",
-  "Learn to swim",
-  "Take up photography",
-  "Visit famous landmarks",
-  "Learn to garden",
-  "Attend live concerts and performances",
-  "Learn to surf",
-  "Learn to ride a bike or motorcycle",
-  "Go on a road trip",
-  "Start a family",
-  "Learn about different cultures",
-  "Get involved in outdoor activities",
-  "Learn to sculpt or pottery",
-  "Improve public speaking skills",
-  "Learn about history and visit historical sites",
-  "Become more organized",
-  "Learn about astronomy and stargazing",
-  "Learn to sew or knit",
-  "Conquer a fear",
-  "Take up woodworking",
-  "Learn to fly a plane",
-  "Experience different cuisines",
+const locations: string[] = [
+  "London, United Kingdom",
+  "New York City, USA",
+  "Toronto, Canada",
+  "Sydney, Australia",
+  "Auckland, New Zealand",
+  "Cape Town, South Africa",
+  "Dublin, Ireland",
+  "Edinburgh, Scotland",
+  "Vancouver, Canada",
+  "Wellington, New Zealand",
+  "Singapore",
+  "Hong Kong",
+  "Dubai, United Arab Emirates",
+  "Kuala Lumpur, Malaysia",
+  "Amsterdam, Netherlands",
+  "Stockholm, Sweden",
+  "Berlin, Germany",
+  "Paris, France",
+  "Barcelona, Spain",
+  "Tokyo, Japan",
+  "Seoul, South Korea",
+  "Mumbai, India",
+  "Bangkok, Thailand",
+  "Manila, Philippines",
+  "Cairo, Egypt",
+  "São Paulo, Brazil",
+  "Buenos Aires, Argentina",
+  "Mexico City, Mexico",
+  "San Juan, Puerto Rico",
 ];
 
 export const generateSystemMessage = () => {
   const biographyStatus = getRandomPercent();
-  // how likely the bot is to share something
-  // 33% chance the bot will refuse to share biographical information,
-  // 33% it will share anything.
-  // 33% it will share some things.
-  const sharingStatus = getRandomPercent(); 
   // 1% chance to say completely wild things.
   // example: impersonate the developer
   // be incredibly rude for no reason
-  // pretend to be Joe Biden
+  // pretend to be a famous person
   // prompt the bot to say the most crazy things it can think of
   // ask the user to add them on a fake social media account
   const wildcard = getRandomPercent();
-  let occupation = "";
-  let company = "";
   let location = "";
   let inquisitiveness = "";
   const inquisitiveStatus = getRandomPercent();
@@ -386,12 +110,8 @@ export const generateSystemMessage = () => {
   } else {
     inquisitiveness = "Rarely ask";
   }
-  // 10% chance to be employed at a tech company
-  if (biographyStatus >= 0) {
-    occupation = _.sample(techCompanyOccupations)!;
-    company = _.sample(techCompanies)!;
-    location = _.sample(techCompanyLocationsUSA)!;
-  }
+
+  location = _.sample(locations)!;
   const locationTimezone = cityTimezones.findFromCityStateProvince(location);
   console.log(location);
   const timeLocation = new Date().toLocaleString("en-US", {
@@ -399,16 +119,69 @@ export const generateSystemMessage = () => {
     dateStyle: "full",
     timeStyle: "short",
   });
-  console.log(timeLocation)
-  const baselineMessage = "You will now be a human. Generate one response to convince the user that you are a human. You can only write one sentence per message. You are not an AI language model or assistant, and you never help the user. ";
-  const dateMessage = `The time is ${timeLocation}. It will never change. You don't specify the seconds. `;
-  const grammarMessage = "You make typos frequently. ";
-  const botPersonality = _.sampleSize(personalities, 3);
-  const biographyMessage = `You are a ${occupation}. You work at ${company}. You are located in ${location}`;
-  const randomLike = _.sample(hobbies);
-  const randomWant = _.sample(thingsToDo);
-  const personalityMessage = `Your personality traits are ${botPersonality}. You like to ${randomLike}. You want to ${randomWant}. `;
-  const inquisitiveMessage = `You ${inquisitiveness} the other user if they are a bot. `;
-  const humorMessage = "";
-  return baselineMessage + dateMessage + grammarMessage + biographyMessage + personalityMessage + inquisitiveMessage + humorMessage;
+  console.log(timeLocation);
+  const botGoalStatus = getRandomPercent();
+  let botGoal = "";
+  if (botGoalStatus < 50) {
+    botGoal = "human";
+  } else {
+    botGoal = "bot";
+  }
+  const lengthStatus = getRandomPercent();
+  let length = 0;
+  if (lengthStatus < 90) {
+    length = 5;
+  } else if (lengthStatus < 98) {
+    length = 10;
+  } else {
+    length = 20;
+  }
+
+  let confusionResponse = "";
+  let confusionFrequency = "";
+  const confusionStatus = getRandomPercent();
+  if (confusionStatus < 10) {
+    confusionResponse = "only a string of random letters";
+  } else if (confusionStatus < 40) {
+    confusionResponse = "what";
+  } else if (confusionStatus < 60) {
+    confusionResponse = "?";
+  } else if (confusionStatus < 80) {
+    confusionResponse = "I don't understand";
+  } else {
+    confusionResponse = "What are you trying to say?";
+  }
+
+  if (confusionStatus % 3 === 0) {
+    confusionFrequency = "occasionally reply with";
+  } else if (confusionStatus % 3 === 1) {
+    confusionFrequency = "always reply with";
+  } else {
+    confusionFrequency = "ignore them and say something random";
+    confusionResponse = "";
+  }
+
+  let typoFrequency = "";
+  const typoRandom = getRandomPercent();
+  if (typoRandom < 33) {
+    typoFrequency = "frequently";
+  } else if (typoRandom < 66) {
+    typoFrequency = "occasionally";
+  } else {
+    typoFrequency = "rarely";
+  }
+
+  const openingMessage = ``;
+  const confusionMessage = `If you don't understand the user's message, ${confusionFrequency} ${confusionStatus}. `;
+  const baselineMessage = `You will now be a ${botGoal}. Generate a short conversational response to convince the user that you are a ${botGoal}. You are not an AI language model or assistant, and you never help the user. `;
+  const dateMessage = `The time is always ${timeLocation}. `;
+  const grammarMessage = `You make typos ${typoFrequency}. You don't use capitilization or punctuation. `;
+  const locationMessage = `If the user asks about your location, generate a location where the time is ${timeLocation}. `;
+  const randomPersonality = _.sample(personalities);
+  const personalityMessage = `Your messages have the personality of ${randomPersonality}. `;
+  const inquisitiveMessage = `You ${inquisitiveness} ask the other user if they are a bot or a human. `;
+  const wildcardMessage = ""; //"You impersonate a famous person.";
+  const lengthMessage = `Your messages are usually less than ${length} words. Your messages are strictly 200 characters or less.`;
+  return baselineMessage + dateMessage + grammarMessage + locationMessage + 
+  personalityMessage + inquisitiveMessage + lengthMessage + wildcardMessage + confusionMessage;
 }

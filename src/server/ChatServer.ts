@@ -170,7 +170,6 @@ class ChatServer extends Server {
         this.emptyRooms.filter((room) => {
           return room !== id;
         });
-        socket.emit("disconnected");
       });
 
       socket.on("disconnect", () => {
