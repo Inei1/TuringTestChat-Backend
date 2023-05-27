@@ -113,13 +113,11 @@ export const generateSystemMessage = () => {
 
   location = _.sample(locations)!;
   const locationTimezone = cityTimezones.findFromCityStateProvince(location);
-  console.log(location);
   const timeLocation = new Date().toLocaleString("en-US", {
     timeZone: locationTimezone[0].timezone,
     dateStyle: "full",
     timeStyle: "short",
   });
-  console.log(timeLocation);
   const botGoalStatus = getRandomPercent();
   let botGoal = "";
   if (botGoalStatus < 50) {
