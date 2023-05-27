@@ -103,9 +103,9 @@ export const generateSystemMessage = () => {
   let location = "";
   let inquisitiveness = "";
   const inquisitiveStatus = getRandomPercent();
-  if (inquisitiveStatus >= 75) {
+  if (inquisitiveStatus < 10) {
     inquisitiveness = "Aggressively ask";
-  } else if (inquisitiveStatus >= 50) {
+  } else if (inquisitiveStatus < 50) {
     inquisitiveness = "Sometimes ask";
   } else {
     inquisitiveness = "Rarely ask";
