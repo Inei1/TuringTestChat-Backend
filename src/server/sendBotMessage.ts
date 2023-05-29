@@ -6,22 +6,22 @@ import { ChatSession } from "src/types";
 import { randomUUID } from "crypto";
 import logger from "jet-logger";
 
-export const sendBotMessage = async (io: SocketServer<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,
+export const sendBotMessage = async (botUser: string,
+  io: SocketServer<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,
   openai: OpenAIApi, room: ChatSession, id: string) => {
-  const convertedMessages = convertMessages(room.messages);
+  const convertedMessages = convertMessages(botUser, room.messages);
   let completion: any;
+  console.log(convertedMessages);
   try {
     const temperatureRandom = Math.random() * 0.2 + 1.1;
-    const frequencyRandom = Math.random();
-    const presenceRandom = Math.random() - 1;
     completion = await openai.createChatCompletion({
       model: "gpt-3.5-turbo",
       messages: convertedMessages,
       max_tokens: 1024,
       // Set this randomly. Make it very rare to have extremely high temperature.
       temperature: temperatureRandom,
-      frequency_penalty: frequencyRandom,
-      presence_penalty: presenceRandom,
+      frequency_penalty: 1,
+      presence_penalty: -1,
     });
     const completionMessage = completion!.data.choices[0].message?.content!;
     const wordsPerSecond = 10000;//room.user1.name === "Bot" ? room.user1.wordsPerSecond : room.user2.wordsPerSecond;
@@ -29,7 +29,7 @@ export const sendBotMessage = async (io: SocketServer<DefaultEventsMap, DefaultE
     setTimeout(async () => {
       if (room.endChatTime > Date.now()) {
         io.to(room.id).emit("messageResponse", {
-          name: "Bot",
+          name: botUser,
           text: completionMessage,
           key: randomUUID(),
         });
@@ -37,7 +37,7 @@ export const sendBotMessage = async (io: SocketServer<DefaultEventsMap, DefaultE
         await globalThis.collections.chatSessions?.updateOne(
           { id: id },
           {
-            $push: { messages: { name: "Bot", message: completionMessage! } },
+            $push: { messages: { name: botUser, message: completionMessage! } },
             $set: { "user1.canSend": !room!.user1.canSend, "user2.canSend": !room!.user2.canSend }
           }
         );
@@ -50,9 +50,9 @@ export const sendBotMessage = async (io: SocketServer<DefaultEventsMap, DefaultE
   }
 }
 
-const convertMessages = (messages: UserMessage[]) => {
+const convertMessages = (botUser: string, messages: UserMessage[]) => {
   return messages.map((message) => {
-    if (message.name === "Bot") {
+    if (message.name === botUser) {
       return { role: ChatCompletionRequestMessageRoleEnum.Assistant, content: message.message };
     } else if (message.name === "System") {
       return { role: ChatCompletionRequestMessageRoleEnum.System, content: message.message };

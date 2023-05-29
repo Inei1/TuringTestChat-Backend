@@ -6,7 +6,8 @@ const RESULT_TIME = 30000;
 
 export const initiateChat = async (id: any, io: SocketServer<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,
   socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,
-  canSend: boolean, selfGoal: string, otherGoal: string, initiateSelf: boolean) => {
+  canSend: boolean, selfGoal: string, otherGoal: string, initiateSelf: boolean,
+  selfName: string, otherName: string) => {
   const endChatTime = Date.now() + CHAT_TIME;
   const endResultTime = Date.now() + CHAT_TIME + RESULT_TIME;
   await globalThis.collections.chatSessions?.updateOne(
@@ -14,10 +15,28 @@ export const initiateChat = async (id: any, io: SocketServer<DefaultEventsMap, D
     { $set: { endChatTime: endChatTime, endResultTime: endResultTime } }
   );
   if (initiateSelf) {
-    socket.emit("startChat", { endChatTime: endChatTime, endResultTime: endResultTime, canSend: canSend, goal: selfGoal });
-    socket.to(id).emit("startChat", { endChatTime: endChatTime, endResultTime: endResultTime, canSend: !canSend, goal: otherGoal });
+    socket.emit("startChat", {
+      endChatTime: endChatTime,
+      endResultTime: endResultTime,
+      canSend: canSend,
+      goal: selfGoal,
+      name: selfName,
+    });
+    socket.to(id).emit("startChat", {
+      endChatTime: endChatTime,
+      endResultTime: endResultTime,
+      canSend: !canSend,
+      goal: otherGoal,
+      name: otherName,
+    });
   } else {
-    io.to(id).emit("startChat", { endChatTime: endChatTime, endResultTime: endResultTime, canSend: !canSend, goal: otherGoal });
+    io.to(id).emit("startChat", {
+      endChatTime: endChatTime,
+      endResultTime: endResultTime,
+      canSend: !canSend,
+      goal: otherGoal,
+      name: otherName
+    });
   }
   setTimeout(() => {
     io.to(id).emit("endChat");

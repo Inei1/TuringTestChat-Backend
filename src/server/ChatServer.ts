@@ -120,7 +120,7 @@ class ChatServer extends Server {
     io.on("connection", (socket) => {
       logger.info("User connected: " + socket.id);
 
-      socket.on("startRoom", (data) => startRoom(data, this.emptyRooms, socket, io, this.openai));
+      socket.on("startRoom", () => startRoom(this.emptyRooms, socket, io, this.openai));
 
       socket.on("message", (data) => message(data, io, socket, this.openai));
 

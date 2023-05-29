@@ -19,18 +19,18 @@ const WAITING_MILLIS = 30000;
 // Because of this, we need to have the chance of queueing into a bot instead of a player when finding
 // a game to be 33%. The probability of queueing into a bot is 1/4 + (3/4 * 1/3) = 50%.
 // The probability of queueing into a human is (3/4 * 2/3) = 50%.
-export const startRoom = async (username: any, emptyRooms: string[],
+export const startRoom = async (emptyRooms: string[],
   socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,
   io: SocketServer<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,
   openai: OpenAIApi) => {
   if (emptyRooms.length > 0) {
-    joinRoom(username, emptyRooms, socket, io, openai);
+    joinRoom(emptyRooms, socket, io, openai);
   } else {
-    createNewRoom(username, emptyRooms, socket, io, openai);
+    createNewRoom(emptyRooms, socket, io, openai);
   }
 }
 
-const createNewRoom = async (username: any, emptyRooms: string[],
+const createNewRoom = async (emptyRooms: string[],
   socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,
   io: SocketServer<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,
   openai: OpenAIApi) => {
@@ -46,8 +46,8 @@ const createNewRoom = async (username: any, emptyRooms: string[],
           endResultTime: -1,
           id: roomId,
           messages: [],
-          user1: { name: username, bot: false, result: null, ready: false, socketId: socket.id, goal: getRandomPercent() < 50 ? "Human" : "Bot", canSend: user1Start, active: true, wordsPerSecond: -1 },
-          user2: { name: "", bot: false, result: null, ready: false, socketId: "", goal: getRandomPercent() < 50 ? "Human" : "Bot", canSend: !user1Start, active: true, wordsPerSecond: getRandomWordsPerSecond() }
+          user1: { name: "user1", bot: false, result: null, ready: false, socketId: socket.id, goal: getRandomPercent() < 50 ? "Human" : "Bot", canSend: user1Start, active: true, wordsPerSecond: -1 },
+          user2: { name: "user2", bot: false, result: null, ready: false, socketId: "", goal: getRandomPercent() < 50 ? "Human" : "Bot", canSend: !user1Start, active: true, wordsPerSecond: getRandomWordsPerSecond() }
         });
     } catch (error) {
       logger.err(error);
@@ -68,14 +68,14 @@ const createNewRoom = async (username: any, emptyRooms: string[],
           name: "System",
           message: generateSystemMessage()
         }],
-        user1: { name: "Bot", bot: true, result: null, ready: false, socketId: "", goal: getRandomPercent() < 50 ? "Human" : "Bot", canSend: botStart, active: true, wordsPerSecond: getRandomWordsPerSecond() },
-        user2: { name: username, bot: false, result: null, ready: false, socketId: socket.id, goal: getRandomPercent() < 50 ? "Human" : "Bot", canSend: !botStart, active: true, wordsPerSecond: -1 }
+        user1: { name: "user1", bot: true, result: null, ready: false, socketId: "", goal: getRandomPercent() < 50 ? "Human" : "Bot", canSend: botStart, active: true, wordsPerSecond: getRandomWordsPerSecond() },
+        user2: { name: "user2", bot: false, result: null, ready: false, socketId: socket.id, goal: getRandomPercent() < 50 ? "Human" : "Bot", canSend: !botStart, active: true, wordsPerSecond: -1 }
       });
     } catch (error) {
       logger.err(error);
     }
     socket.join(roomId);
-    socket.emit("foundChat", { endTime: endTime });
+    socket.emit("foundChat", { endTime: endTime, name: "user2" });
     logger.info("User instantly joined game with bot " + roomId);
     setTimeout(async () => {
       // user1 is always bot
@@ -87,9 +87,9 @@ const createNewRoom = async (username: any, emptyRooms: string[],
         { id: roomId }
       );
       if (room?.user2.ready) {
-        await initiateChat(roomId, io, socket, botStart, room?.user1.goal!, room?.user2.goal!, true);
+        await initiateChat(roomId, io, socket, botStart, room?.user1.goal!, room?.user2.goal!, true, "user1", "user2");
         if (botStart) {
-          await sendBotMessage(io, openai, room, roomId);
+          await sendBotMessage("user1", io, openai, room, roomId);
         }
       }
     }, getRandomJoinTime());
@@ -106,7 +106,7 @@ const createNewRoom = async (username: any, emptyRooms: string[],
   }
 }
 
-const joinRoom = async (username: any, emptyRooms: string[],
+const joinRoom = async (emptyRooms: string[],
   socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,
   io: SocketServer<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,
   openai: OpenAIApi) => {
@@ -119,12 +119,13 @@ const joinRoom = async (username: any, emptyRooms: string[],
     );
     await globalThis.collections.chatSessions?.updateOne(
       { id: roomId },
-      { $set: { user2: { name: username, bot: false, result: null, ready: false, socketId: socket.id, goal: getRandomPercent() < 50 ? "Human" : "Bot", canSend: room?.user2.canSend!, active: true, wordsPerSecond: -1 } } }
+      { $set: { user2: { name: "user2", bot: false, result: null, ready: false, socketId: socket.id, goal: getRandomPercent() < 50 ? "Human" : "Bot", canSend: room?.user2.canSend!, active: true, wordsPerSecond: -1 } } }
     );
     socket.join(roomId);
     logger.info("Room joined: " + roomId);
     const endTime = Date.now() + WAITING_MILLIS;
-    io.to(roomId).emit("foundChat", { endTime: endTime });
+    socket.to(roomId).emit("foundChat", { endTime: endTime, name: "user1" });
+    socket.emit("foundChat", { endTime: endTime, name: "user2" });
     setTimeout(async () => {
       const room = await globalThis.collections.chatSessions?.findOne(
         { id: roomId }
@@ -147,9 +148,9 @@ const joinRoom = async (username: any, emptyRooms: string[],
     );
     await globalThis.collections.chatSessions?.updateOne(
       { id: roomId },
-      { $set: { user2: { name: "Bot", bot: true, result: null, ready: false, socketId: "", goal: getRandomPercent() < 50 ? "Human" : "Bot", canSend: room?.user2.canSend!, active: true, wordsPerSecond: getRandomWordsPerSecond() } } }
+      { $set: { user2: { name: "user2", bot: true, result: null, ready: false, socketId: "", goal: getRandomPercent() < 50 ? "Human" : "Bot", canSend: room?.user2.canSend!, active: true, wordsPerSecond: getRandomWordsPerSecond() } } }
     );
-    io.to(roomId).emit("foundChat", { endTime: endTime });
+    io.to(roomId).emit("foundChat", { endTime: endTime, name: "user1" });
     logger.info("Joined into bot " + roomId);
     setTimeout(async () => {
       // user2 is always bot
@@ -161,9 +162,9 @@ const joinRoom = async (username: any, emptyRooms: string[],
         { id: roomId }
       );
       if (room?.user1.ready) {
-        await initiateChat(roomId, io, socket, room.user2.canSend, room?.user2.goal!, room?.user1.goal!, false);
+        await initiateChat(roomId, io, socket, room.user2.canSend, room?.user2.goal!, room?.user1.goal!, false, "user2", "user1");
         if (room.user2.canSend) {
-          await sendBotMessage(io, openai, room, roomId);
+          await sendBotMessage("user2", io, openai, room, roomId);
         }
       }
     }, getRandomJoinTime());
@@ -179,6 +180,6 @@ const joinRoom = async (username: any, emptyRooms: string[],
     }, WAITING_MILLIS);
 
     // create a new room for the new user
-    createNewRoom(username, emptyRooms, socket, io, openai);
+    createNewRoom(emptyRooms, socket, io, openai);
   }
 }
