@@ -11,7 +11,6 @@ export const sendBotMessage = async (botUser: string,
   openai: OpenAIApi, room: ChatSession, id: string) => {
   const convertedMessages = convertMessages(botUser, room.messages);
   let completion: any;
-  console.log(convertedMessages);
   try {
     const temperatureRandom = Math.random() * 0.2 + 1.1;
     completion = await openai.createChatCompletion({

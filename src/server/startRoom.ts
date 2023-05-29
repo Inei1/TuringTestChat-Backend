@@ -148,7 +148,25 @@ const joinRoom = async (emptyRooms: string[],
     );
     await globalThis.collections.chatSessions?.updateOne(
       { id: roomId },
-      { $set: { user2: { name: "user2", bot: true, result: null, ready: false, socketId: "", goal: getRandomPercent() < 50 ? "Human" : "Bot", canSend: room?.user2.canSend!, active: true, wordsPerSecond: getRandomWordsPerSecond() } } }
+      {
+        $set: {
+          user2: {
+            name: "user2",
+            bot: true,
+            result: null,
+            ready: false,
+            socketId: "",
+            goal: getRandomPercent() < 50 ? "Human" : "Bot",
+            canSend: room?.user2.canSend!,
+            active: true,
+            wordsPerSecond: getRandomWordsPerSecond()
+          },
+          messages: [{
+            name: "System",
+            message: generateSystemMessage()
+          }]
+        }
+      }
     );
     io.to(roomId).emit("foundChat", { endTime: endTime, name: "user1" });
     logger.info("Joined into bot " + roomId);
