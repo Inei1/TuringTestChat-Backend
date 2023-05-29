@@ -47,7 +47,7 @@ export const initiateChat = async (id: any, io: SocketServer<DefaultEventsMap, D
       { id: id }
     );
     if (newRoom?.user1.result === "" && newRoom?.user1.active) {
-      io.to(newRoom?.user2.socketId).emit("noResult");
+      io.to(newRoom?.user2.socketId).emit("noResult", { otherGoal: newRoom.user1.goal });
       io.to(newRoom?.user1.socketId).emit("selfResult", {
         points: -3,
         other: newRoom?.user2.bot ? "Bot" : "Human",
@@ -57,7 +57,7 @@ export const initiateChat = async (id: any, io: SocketServer<DefaultEventsMap, D
       io.to(newRoom!.user2.socketId).emit("completeChat");
     }
     if (newRoom?.user2.result === "" && newRoom?.user2.active) {
-      io.to(newRoom?.user1.socketId).emit("noResult");
+      io.to(newRoom?.user1.socketId).emit("noResult", { otherGoal: newRoom.user2.goal });
       io.to(newRoom?.user2.socketId).emit("selfResult", {
         points: -3,
         other: newRoom?.user1.bot ? "Bot" : "Human",

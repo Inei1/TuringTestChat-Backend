@@ -109,7 +109,8 @@ export const result = async (data: any, socket: any) => {
     socket.emit("selfResult", {
       result: data.result,
       points: selfPoints,
-      other: other
+      other: other,
+      otherGoal: receiver?.goal
     });
   }
 }

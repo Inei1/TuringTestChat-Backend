@@ -15,9 +15,6 @@ export const message = async (data: any,
   );
   const sendingUser = room?.user1.name === data.name ? room?.user1 : room?.user2;
   const receivingUser = room?.user1.name !== data.name ? room?.user1 : room?.user2;
-
-  console.log(sendingUser?.name);
-  console.log(receivingUser?.name);
   data.key = randomUUID();
   if (room!.endChatTime >= Date.now() && sendingUser?.canSend) {
     if ((room?.user1.name === data.name && room?.user2.bot) || (room?.user2.name === data.name && room?.user1.bot)) {
