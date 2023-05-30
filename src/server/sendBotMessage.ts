@@ -22,7 +22,7 @@ export const sendBotMessage = async (botUser: string,
       frequency_penalty: 1,
       presence_penalty: -1,
     });
-    const completionMessage = completion!.data.choices[0].message?.content!;
+    const completionMessage = completion!.data.choices[0].message?.content!.replace(/["]+/g, "");
     const wordsPerSecond = 10000;//room.user1.name === "Bot" ? room.user1.wordsPerSecond : room.user2.wordsPerSecond;
     setTimeout(() => io.to(room.id).emit("typingResponse", "Chatter"), 100);
     setTimeout(async () => {

@@ -1,6 +1,7 @@
 import _ from "lodash";
 import { getRandomPercent } from "./getRandomPercent";
 import cityTimezones from "city-timezones";
+import logger from "jet-logger";
 
 const personalities: string[] = [
   "Friendly",
@@ -111,13 +112,20 @@ export const generateSystemMessage = () => {
     inquisitiveness = "Rarely ask";
   }
 
+  let timeLocation = "";
+  let locationTimezone;
+  try {
   location = _.sample(locations)!;
-  const locationTimezone = cityTimezones.findFromCityStateProvince(location);
-  const timeLocation = new Date().toLocaleString("en-US", {
+  locationTimezone = cityTimezones.findFromCityStateProvince(location);
+    timeLocation = new Date().toLocaleString("en-US", {
     timeZone: locationTimezone[0].timezone,
     dateStyle: "full",
     timeStyle: "short",
   });
+  } catch (err) {
+    logger.err(err);
+    logger.err("with location " + location);
+  }
   const botGoalStatus = getRandomPercent();
   let botGoal = "";
   if (botGoalStatus < 50) {

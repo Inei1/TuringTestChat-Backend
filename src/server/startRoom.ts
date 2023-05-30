@@ -23,6 +23,7 @@ export const startRoom = async (emptyRooms: string[],
   socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,
   io: SocketServer<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,
   openai: OpenAIApi) => {
+  //console.log(emptyRooms);
   if (emptyRooms.length > 0) {
     joinRoom(emptyRooms, socket, io, openai);
   } else {

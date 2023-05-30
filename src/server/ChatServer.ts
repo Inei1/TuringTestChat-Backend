@@ -132,11 +132,6 @@ class ChatServer extends Server {
 
       socket.on("readyChat", (data) => readyChat(data, io, socket, this.openai));
 
-      socket.on("cancelChat", (data) => {
-        this.emptyRooms = this.emptyRooms.filter((room) => room != data.roomId);
-        socket.disconnect();
-      });
-
       socket.on("disconnecting", async () => {
         const id = getRoomId(socket);
         const room = await globalThis.collections.chatSessions?.findOne(
@@ -167,9 +162,15 @@ class ChatServer extends Server {
             points: 10,
           });
         }
-        this.emptyRooms.filter((room) => {
+        if (room?.endChatTime === -1) {
+          // One user did not accept
+          logger.info("User didn't accept: " + socket.id);
+          socket.to(id).emit("otherWaitingLeft");
+        }
+        this.emptyRooms = this.emptyRooms.filter((room) => {
           return room !== id;
         });
+        logger.info("Room deleted: " + id);
       });
 
       socket.on("disconnect", () => {
