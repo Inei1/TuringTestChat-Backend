@@ -101,6 +101,7 @@ export const result = async (data: any, socket: any) => {
       );
     }
 
+    // give points to otherResult user
     socket.to(room?.id).emit("otherResult", {
       result: data.result,
       points: otherPoints

@@ -50,6 +50,7 @@ export const sendBotMessage = async (botUser: string,
     }, (completionMessage?.length! / charactersPerSecond) * 1000);
   } catch (error) {
     logger.err(error);
+    // Remove add points to otherLeft user
     io.to(room?.id).emit("otherLeft");
   }
 }

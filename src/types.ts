@@ -8,7 +8,12 @@ export interface UserElements {
   profileImage: string;
   password: string;
   email: string;
-  points: number;
+  detection: number;
+  deception: number;
+  detectionWins: number;
+  detectionLosses: number;
+  deceptionWins: number;
+  deceptionLosses: number;
   tokens: AuthToken[];
 }
 

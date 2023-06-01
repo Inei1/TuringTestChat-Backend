@@ -1,4 +1,4 @@
-import { Controller, Middleware, Post } from "@overnightjs/core";
+import { Controller, Get, Middleware, Post } from "@overnightjs/core";
 import { Request, Response } from 'express';
 import { StatusCodes } from "http-status-codes";
 import { check, validationResult } from "express-validator";
@@ -117,6 +117,14 @@ class AccountController {
         succeeded: false,
       });
     }
+  }
+
+  @Get("user")
+  private async getUser(req: Request, res: Response) {
+    const user = await globalThis.collections.users?.findOne(
+      { username: req.body.username }
+    );
+    return user;
   }
 
 }
