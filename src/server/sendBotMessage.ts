@@ -25,7 +25,11 @@ export const sendBotMessage = async (botUser: string,
     });
     const completionMessage = completion!.data.choices[0].message?.content!.replace(/["]+/g, "");
     const charactersPerSecond = room.user1.name === "Bot" ? room.user1.charactersPerSecond : room.user2.charactersPerSecond;
-    setTimeout(() => io.to(room.id).emit("typingResponse", "Chatter"), getRandomTypingDelay());
+    setTimeout(() => {
+      if (room.endChatTime > Date.now()) {
+        io.to(room.id).emit("typingResponse", "Chatter");
+      }
+    }, getRandomTypingDelay());
     setTimeout(async () => {
       if (room.endChatTime > Date.now()) {
         io.to(room.id).emit("messageResponse", {
