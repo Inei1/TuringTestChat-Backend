@@ -32,7 +32,7 @@ export interface ChatUser {
   canSend: boolean;
   active: boolean;
   // only used when bot
-  wordsPerSecond: number;
+  charactersPerSecond: number;
 }
 
 export interface ChatSession {

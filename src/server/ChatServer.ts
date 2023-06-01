@@ -34,8 +34,6 @@ class ChatServer extends Server {
     apiKey: this.apiKey,
   });
   openai = new OpenAIApi(this.config);
-  wordsPerSecond = 20;
-  // make between 30-80 wpm (0.5-1.33), weighted more to low numbers
 
   private readonly DEV_MSG = 'Express Server is running in development mode. ' +
     'No front-end content is being served.';

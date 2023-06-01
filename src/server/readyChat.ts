@@ -17,7 +17,7 @@ export const readyChat = async (data: any, io: SocketServer<DefaultEventsMap, De
     const canSend = room?.user1.canSend!;
     await globalThis.collections.chatSessions?.updateOne(
       { id: id },
-      { $set: { user1: { name: room!.user1.name, result: "", bot: room!.user1.bot, ready: true, socketId: room!.user1.socketId, goal: room!.user1.goal, canSend: canSend, active: true, wordsPerSecond: room?.user1.wordsPerSecond! } } }
+      { $set: { user1: { name: room!.user1.name, result: "", bot: room!.user1.bot, ready: true, socketId: room!.user1.socketId, goal: room!.user1.goal, canSend: canSend, active: true, charactersPerSecond: room?.user1.charactersPerSecond! } } }
     );
     if (otherReady) {
       await initiateChat(id, io, socket, canSend, room!.user1.goal, room!.user2.goal, true, "user1", "user2");
@@ -33,7 +33,7 @@ export const readyChat = async (data: any, io: SocketServer<DefaultEventsMap, De
     const canSend = room?.user2.canSend!;
     await globalThis.collections.chatSessions?.updateOne(
       { id: id },
-      { $set: { user2: { name: room!.user2.name, result: "", bot: room!.user2.bot, ready: true, socketId: room!.user2.socketId, goal: room!.user2.goal, canSend: canSend, active: true, wordsPerSecond: room?.user2.wordsPerSecond! } } }
+      { $set: { user2: { name: room!.user2.name, result: "", bot: room!.user2.bot, ready: true, socketId: room!.user2.socketId, goal: room!.user2.goal, canSend: canSend, active: true, charactersPerSecond: room?.user2.charactersPerSecond! } } }
     );
     if (otherReady) {
       await initiateChat(id, io, socket, canSend, room!.user2.goal, room!.user1.goal, true, "user2", "user1");

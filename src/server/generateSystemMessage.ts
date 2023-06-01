@@ -68,7 +68,6 @@ const locations: string[] = [
   "Auckland, New Zealand",
   "Cape Town, South Africa",
   "Dublin, Ireland",
-  "Edinburgh, Scotland",
   "Vancouver, Canada",
   "Wellington, New Zealand",
   "Singapore",

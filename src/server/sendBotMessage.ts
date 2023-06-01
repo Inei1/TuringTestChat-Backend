@@ -5,6 +5,7 @@ import { DefaultEventsMap } from "socket.io/dist/typed-events";
 import { ChatSession } from "src/types";
 import { randomUUID } from "crypto";
 import logger from "jet-logger";
+import { getRandomTypingDelay } from "./getRandomTypingDelay";
 
 export const sendBotMessage = async (botUser: string,
   io: SocketServer<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,
@@ -23,8 +24,8 @@ export const sendBotMessage = async (botUser: string,
       presence_penalty: -1,
     });
     const completionMessage = completion!.data.choices[0].message?.content!.replace(/["]+/g, "");
-    const wordsPerSecond = 10000;//room.user1.name === "Bot" ? room.user1.wordsPerSecond : room.user2.wordsPerSecond;
-    setTimeout(() => io.to(room.id).emit("typingResponse", "Chatter"), 100);
+    const charactersPerSecond = room.user1.name === "Bot" ? room.user1.charactersPerSecond : room.user2.charactersPerSecond;
+    setTimeout(() => io.to(room.id).emit("typingResponse", "Chatter"), getRandomTypingDelay());
     setTimeout(async () => {
       if (room.endChatTime > Date.now()) {
         io.to(room.id).emit("messageResponse", {
@@ -42,7 +43,7 @@ export const sendBotMessage = async (botUser: string,
         );
       }
       io.to(room?.id!).emit("typingResponse", "");
-    }, (completionMessage?.length! / wordsPerSecond) * 1000);
+    }, (completionMessage?.length! / charactersPerSecond) * 1000);
   } catch (error) {
     logger.err(error);
     io.to(room?.id).emit("otherLeft");
