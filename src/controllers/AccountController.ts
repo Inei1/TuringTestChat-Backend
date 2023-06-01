@@ -150,19 +150,18 @@ class AccountController {
         {
           $setOnInsert: {
             email: req.body.email,
-            comment: req.body.comment,
             timestamp: Date.now(),
           }
         },
         { upsert: true });
       if (updateInfo?.upsertedCount! > 0) {
         return res.status(StatusCodes.OK).json({
-          message: "Subscribed to waitlist",
+          message: "Subscribed to beta",
           succeeded: true,
         });
       } else {
         return res.status(StatusCodes.CONFLICT).json({
-          message: "This email is already added to the waitlist",
+          message: "This email is already added to the beta",
           succeeded: false,
         });
       }
