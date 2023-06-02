@@ -8,46 +8,28 @@ import { readFileSync } from 'fs';
 import { Configuration, OpenAIApi } from 'openai';
 import dotenv from 'dotenv';
 import { connectToDatabase } from './connectToDatabase';
-import passport from 'passport';
 import session from 'express-session';
-import LoginController from '../controllers/LoginController';
 import AccountController from '../controllers/AccountController';
-import passportLocal from "passport-local";
-import { ObjectId } from "mongodb";
-import bcrypt from "bcrypt";
 import MongoStore = require('connect-mongo');
-
-const LocalStrategy = passportLocal.Strategy;
+import { readyChat } from './readyChat';
+import { result } from './result';
+import { message } from './message';
+import { startRoom } from './startRoom';
+import { getRoomId } from './getRoomId';
 
 dotenv.config();
 
 class ChatServer extends Server {
 
-  chatRoom = '';
-  allUsers: any[] = [];
+  emptyRooms: string[] = [];
   apiKey = process.env.OPENAI_API_KEY;
   config = new Configuration({
     apiKey: this.apiKey,
   });
   openai = new OpenAIApi(this.config);
-  // need to optimize this
-  messages: any[] = [{ role: "system", content: "You are trying to convince the person on the other side that you are a human." }];
-  isBot = true;
-  wordsPerSecond = 20;
-  // make between 30-80 wpm (0.5-1.33), weighted more to low numbers
 
   private readonly DEV_MSG = 'Express Server is running in development mode. ' +
     'No front-end content is being served.';
-
-  convertMessage = (data: any) => {
-    this.messages.push({ role: data.name, content: data.text });
-    // console.log(data.text);
-    // if (data.name === "user1") {
-    //   this.messages.push({ role: "user", content: data.text });
-    // } else {
-    //   this.messages.push({ role: "user1", content: data.text });
-    // }
-  }
 
   constructor() {
     super(true);
@@ -62,43 +44,7 @@ class ChatServer extends Server {
     this.app.use(bodyParser.json());
     this.app.use(bodyParser.urlencoded({ extended: true }));
 
-    passport.serializeUser((user, done) => {
-      done(undefined, user);
-    });
-
-    passport.deserializeUser((id: ObjectId, done) => {
-      try {
-        globalThis.collections.users?.findOne({ _id: id }).then((user) => {
-          done(undefined, user);
-        });
-      } catch (err) {
-        done(err, undefined);
-      }
-    });
-
-    passport.use(new LocalStrategy({ usernameField: "username", passwordField: "password" }, (username, password, done) => {
-      try {
-        globalThis.collections.users?.findOne({ username: username.toLowerCase() }).then((user) => {
-          if (!user) {
-            return done(undefined, false, { message: `User ${username} not found` });
-          }
-          bcrypt.compare(password, user.password).then((valid) => {
-            if (valid) {
-              return done(undefined, user);
-            } else {
-              return done(undefined, false, { message: "Invalid username or password" });
-            }
-          })
-        });
-      } catch (err) {
-        return done(err);
-      }
-    }));
-
-    this.app.use(passport.initialize());
-    this.app.use(passport.session());
-
-    super.addControllers([new LoginController(), new AccountController()]);
+    super.addControllers([new AccountController()]);
     if (process.env.NODE_ENV === 'test') {
       logger.info('Starting server in development mode');
       const msg = this.DEV_MSG + process.env.EXPRESS_PORT;
@@ -129,34 +75,60 @@ class ChatServer extends Server {
     io.on("connection", (socket) => {
       logger.info("User connected: " + socket.id);
 
-      socket.on("message", async (data) => {
-        io.emit("messageResponse", data);
+      socket.on("startRoom", async () => await startRoom(this.emptyRooms, socket, io, this.openai));
 
-        this.convertMessage(data);
-        const completion = await this.openai.createChatCompletion({
-          model: "gpt-3.5-turbo",
-          messages: this.messages,
+      socket.on("message", async (data) => await message(data, io, socket, this.openai));
+
+      socket.on("result", async (data) => await result(data, socket));
+
+      socket.on("typing", () => socket.broadcast.to(getRoomId(socket)).emit("typingResponse", "Chatter"));
+
+      socket.on("typingStop", () => socket.broadcast.to(getRoomId(socket)).emit("typingResponse", ""));
+
+      socket.on("readyChat", async (data) => await readyChat(data, io, socket, this.openai));
+
+      socket.on("disconnecting", async () => {
+        const id = getRoomId(socket);
+        const room = await globalThis.collections.chatSessions?.findOne(
+          { id: id }
+        );
+        if (room && room.endChatTime >= Date.now()) {
+          // Remove points from leaving user, add points to otherLeft user
+          socket.broadcast.to(id).emit("otherLeft");
+          if (room?.user1.socketId === socket.id) {
+            await globalThis.collections.chatSessions?.updateOne(
+              { id: id },
+              {
+                $set: { "user1.active": false }
+              }
+            );
+          } else if (room?.user2.socketId === socket.id) {
+            await globalThis.collections.chatSessions?.updateOne(
+              { id: id },
+              {
+                $set: { "user2.active": false }
+              }
+            );
+          }
+        } else if (room && room!.endResultTime >= Date.now()) {
+          // Did not pick, add points to user who gets otherResult
+          socket.broadcast.to(id).emit("otherResult", {
+            result: "Did not pick",
+            points: 10,
+          });
+        }
+        if (room?.endChatTime === -1) {
+          // One user did not accept
+          logger.info("User didn't accept: " + socket.id);
+          socket.broadcast.to(id).emit("otherWaitingLeft");
+        }
+        this.emptyRooms = this.emptyRooms.filter((room) => {
+          return room !== id;
         });
-        setTimeout(() => io.emit("typingResponse", "user2"), 100);
-        const message = completion.data.choices[0].message?.content;
-
-        setTimeout(() => io.emit("messageResponse", {
-          name: "user2",
-          text: completion.data.choices[0].message?.content
-        }), (message?.length! / this.wordsPerSecond) * 1000);
-        io.emit("typingResponse", "");
-      });
-
-      socket.on("typing", (data) => socket.broadcast.emit("typingResponse", data));
-
-      socket.on("newUser", (data) => {
-        this.allUsers.push(data);
-        io.emit("newUserResponse", this.allUsers);
+        logger.info("Room deleted: " + id);
       });
 
       socket.on("disconnect", () => {
-        this.allUsers = this.allUsers.filter((user: any) => user.socketId !== socket.id);
-        io.emit("newUserResponse", this.allUsers);
         logger.info("User disconnected: " + socket.id);
         socket.disconnect();
       });

@@ -1,10 +1,16 @@
 import { Collection } from "mongodb";
-import { UserElements, WaitlistElements } from "./types";
+import { ChatSession, UserElements, WaitlistElements } from "./types";
 
 // https://stackoverflow.com/questions/42233987/how-to-configure-custom-global-interfaces-d-ts-files-for-typescript/42257742#42257742
-export {}
+export { }
 
 declare global {
   var refreshTokens: string[];
-  var collections: { users?: Collection<UserElements>, waitlist?: Collection<WaitlistElements> };
+  var collections: {
+    users?: Collection<UserElements>,
+    waitlist?: Collection<WaitlistElements>,
+    chatSessions?: Collection<ChatSession>,
+    pastChatSessions: Collection<ChatSession>,
+    beta: Collection<WaitlistElements>,
+  };
 }
