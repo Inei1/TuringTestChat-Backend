@@ -62,7 +62,6 @@ const personalities: string[] = [
 
 const locations: string[] = [
   "London, United Kingdom",
-  "New York City, USA",
   "Toronto, Canada",
   "Sydney, Australia",
   "Auckland, New Zealand",

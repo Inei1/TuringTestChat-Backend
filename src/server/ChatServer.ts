@@ -118,17 +118,17 @@ class ChatServer extends Server {
     io.on("connection", (socket) => {
       logger.info("User connected: " + socket.id);
 
-      socket.on("startRoom", () => startRoom(this.emptyRooms, socket, io, this.openai));
+      socket.on("startRoom", async () => await startRoom(this.emptyRooms, socket, io, this.openai));
 
-      socket.on("message", (data) => message(data, io, socket, this.openai));
+      socket.on("message", async (data) => await message(data, io, socket, this.openai));
 
-      socket.on("result", (data) => result(data, socket));
+      socket.on("result", async (data) => await result(data, socket));
 
-      socket.on("typing", () => socket.broadcast.emit("typingResponse", "Chatter"));
+      socket.on("typing", () => socket.broadcast.to(getRoomId(socket)).emit("typingResponse", "Chatter"));
 
-      socket.on("typingStop", () => socket.broadcast.emit("typingResponse", ""));
+      socket.on("typingStop", () => socket.broadcast.to(getRoomId(socket)).emit("typingResponse", ""));
 
-      socket.on("readyChat", (data) => readyChat(data, io, socket, this.openai));
+      socket.on("readyChat", async (data) => await readyChat(data, io, socket, this.openai));
 
       socket.on("disconnecting", async () => {
         const id = getRoomId(socket);
@@ -163,7 +163,7 @@ class ChatServer extends Server {
         if (room?.endChatTime === -1) {
           // One user did not accept
           logger.info("User didn't accept: " + socket.id);
-          socket.to(id).emit("otherWaitingLeft");
+          socket.broadcast.to(id).emit("otherWaitingLeft");
         }
         this.emptyRooms = this.emptyRooms.filter((room) => {
           return room !== id;

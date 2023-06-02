@@ -23,10 +23,13 @@ export const startRoom = async (emptyRooms: string[],
   socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,
   io: SocketServer<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,
   openai: OpenAIApi) => {
+  logger.info("Attempting to start new room");
   if (emptyRooms.length > 0) {
-    joinRoom(emptyRooms, socket, io, openai);
+    logger.info("New room found, attempting to join");
+    await joinRoom(emptyRooms, socket, io, openai);
   } else {
-    createNewRoom(emptyRooms, socket, io, openai);
+    logger.info("No new rooms found, creating a new one");
+    await createNewRoom(emptyRooms, socket, io, openai);
   }
 }
 
@@ -34,11 +37,14 @@ const createNewRoom = async (emptyRooms: string[],
   socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,
   io: SocketServer<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,
   openai: OpenAIApi) => {
+  logger.info("Creating a new room");
   const roomId = randomUUID();
   const botChat = getRandomPercent();
-  // 75% chance to queue like normal.
+  // 75% chance to queue normally.
   if (botChat <= 75) {
+    logger.info(`Queuing normally for room ${roomId}`);
     const user1Start = getRandomPercent() < 50;
+    logger.info(`Is user1 starting? ${user1Start}`);
     try {
       await globalThis.collections.chatSessions?.insertOne(
         {
@@ -46,19 +52,41 @@ const createNewRoom = async (emptyRooms: string[],
           endResultTime: -1,
           id: roomId,
           messages: [],
-          user1: { name: "user1", bot: false, result: null, ready: false, socketId: socket.id, goal: getRandomPercent() < 50 ? "Human" : "Bot", canSend: user1Start, active: true, charactersPerSecond: getRandomCharactersPerSecond() },
-          user2: { name: "user2", bot: false, result: null, ready: false, socketId: "", goal: getRandomPercent() < 50 ? "Human" : "Bot", canSend: !user1Start, active: true, charactersPerSecond: getRandomCharactersPerSecond() }
+          user1: {
+            name: "user1",
+            bot: false,
+            result: null,
+            ready: false,
+            socketId: socket.id,
+            goal: getRandomPercent() < 50 ? "Human" : "Bot",
+            canSend: user1Start,
+            active: true,
+            charactersPerSecond: getRandomCharactersPerSecond()
+          },
+          user2: {
+            name: "user2",
+            bot: false,
+            result: null,
+            ready: false,
+            socketId: "",
+            goal: getRandomPercent() < 50 ? "Human" : "Bot",
+            canSend: !user1Start,
+            active: true,
+            charactersPerSecond: getRandomCharactersPerSecond()
+          }
         });
     } catch (error) {
       logger.err(error);
     }
     emptyRooms.push(roomId);
     socket.join(roomId);
-    logger.info("Room created: " + roomId);
+    logger.info(`Created new room ${roomId}`);
     // 25% chance to immediately queue into a bot instead.
   } else {
+    logger.info("Creating and immediately filling a new room with a bot");
     const endTime = Date.now() + WAITING_MILLIS;
     const botStart = getRandomPercent() < 50;
+    logger.info(`End time is ${endTime} for ${roomId}`);
     try {
       await globalThis.collections.chatSessions?.insertOne({
         endChatTime: -1,
@@ -68,17 +96,38 @@ const createNewRoom = async (emptyRooms: string[],
           name: "System",
           message: generateSystemMessage()
         }],
-        user1: { name: "user1", bot: true, result: null, ready: false, socketId: "", goal: getRandomPercent() < 50 ? "Human" : "Bot", canSend: botStart, active: true, charactersPerSecond: getRandomCharactersPerSecond() },
-        user2: { name: "user2", bot: false, result: null, ready: false, socketId: socket.id, goal: getRandomPercent() < 50 ? "Human" : "Bot", canSend: !botStart, active: true, charactersPerSecond: getRandomCharactersPerSecond() }
+        user1: {
+          name: "user1",
+          bot: true,
+          result: null,
+          ready: false,
+          socketId: "",
+          goal: getRandomPercent() < 50 ? "Human" : "Bot",
+          canSend: botStart,
+          active: true,
+          charactersPerSecond: getRandomCharactersPerSecond()
+        },
+        user2: {
+          name: "user2",
+          bot: false,
+          result: null,
+          ready: false,
+          socketId: socket.id,
+          goal: getRandomPercent() < 50 ? "Human" : "Bot",
+          canSend: !botStart,
+          active: true,
+          charactersPerSecond: getRandomCharactersPerSecond()
+        }
       });
     } catch (error) {
       logger.err(error);
     }
     socket.join(roomId);
     socket.emit("foundChat", { endTime: endTime, name: "user2" });
-    logger.info("User instantly joined game with bot " + roomId);
+    logger.info(`User instantly joined game with bot ${roomId}`);
     setTimeout(async () => {
       // user1 is always bot
+      logger.info(`Bot is joining room ${roomId}`);
       await globalThis.collections.chatSessions?.updateOne(
         { id: roomId },
         { $set: { "user1.ready": true } }
@@ -86,22 +135,30 @@ const createNewRoom = async (emptyRooms: string[],
       const room = await globalThis.collections.chatSessions?.findOne(
         { id: roomId }
       );
-      if (room?.user2.ready) {
+      // don't reactivate the chat if it's already active
+      if (room?.user2.ready && room.endChatTime !== -1) {
+        logger.info(`User1 is ready in room ${roomId}`);
         await initiateChat(roomId, io, socket, botStart, room?.user1.goal!, room?.user2.goal!, true, "user1", "user2");
         if (botStart) {
           await sendBotMessage("user1", io, openai, room, roomId);
         }
+      } else {
+        logger.info(`User is not ready in room ${roomId}`);
       }
     }, getRandomJoinTime());
     setTimeout(async () => {
+      logger.info(`Checking if user2 is ready in room ${roomId}`);
       const room = await globalThis.collections.chatSessions?.findOne(
         { id: roomId }
       );
       // user1 is a bot and always ready by the end
       if (!room?.user2.ready) {
         // remove points from user2
+        logger.info(`User2 is ready in room ${roomId}`);
         io.to(roomId).emit("readyExpired");
         io.socketsLeave(roomId);
+      } else {
+        logger.info(`User2 is not ready in room ${roomId}`);
       }
     }, WAITING_MILLIS);
   }
@@ -114,36 +171,58 @@ const joinRoom = async (emptyRooms: string[],
   const botChat = getRandomPercent();
   // 66% chance to queue into a human like normal.
   if (botChat <= 66) {
+    logger.info("New room is queuing like normal");
     const roomId = emptyRooms.pop()!
     const room = await globalThis.collections.chatSessions?.findOne(
       { id: roomId }
     );
     await globalThis.collections.chatSessions?.updateOne(
       { id: roomId },
-      { $set: { user2: { name: "user2", bot: false, result: null, ready: false, socketId: socket.id, goal: getRandomPercent() < 50 ? "Human" : "Bot", canSend: room?.user2.canSend!, active: true, charactersPerSecond: getRandomCharactersPerSecond() } } }
+      {
+        $set: {
+          user2: {
+            name: "user2",
+            bot: false,
+            result: null,
+            ready: false,
+            socketId: socket.id,
+            goal: getRandomPercent() < 50 ? "Human" : "Bot",
+            canSend: room?.user2.canSend!,
+            active: true,
+            charactersPerSecond: getRandomCharactersPerSecond()
+          }
+        }
+      }
     );
+    logger.info(`Created chat session for room ${roomId}`);
     socket.join(roomId);
-    logger.info("Room joined: " + roomId);
+    logger.info(`Room ${roomId} joined`);
     const endTime = Date.now() + WAITING_MILLIS;
-    socket.to(roomId).emit("foundChat", { endTime: endTime, name: "user1" });
+    logger.info(`End waiting time for ${roomId} is ${endTime}`);
+    socket.broadcast.to(roomId).emit("foundChat", { endTime: endTime, name: "user1" });
     socket.emit("foundChat", { endTime: endTime, name: "user2" });
     setTimeout(async () => {
+      logger.info(`Checking that both users accepted in room ${roomId}`);
       const room = await globalThis.collections.chatSessions?.findOne(
         { id: roomId }
       );
       if (!room?.user1.ready) {
         // remove points from user1
+        logger.info(`User1 did not accept in ${roomId}`);
         io.to(roomId).emit("readyExpired");
         io.socketsLeave(roomId);
       }
       if (!room?.user2.ready) {
         // remove points from user2
+        logger.info(`User2 did not accept in ${roomId}`);
         io.to(roomId).emit("readyExpired");
         io.socketsLeave(roomId);
       }
     }, WAITING_MILLIS);
+    logger.info(`Successfully sent room found message for room ${roomId}`);
     // 33% chance to queue into a bot instead.
   } else {
+    logger.info("Previously existing room is queuing into a bot");
     const endTime = Date.now() + WAITING_MILLIS;
     const roomId = emptyRooms.pop()!;
     const room = await globalThis.collections.chatSessions?.findOne(
@@ -171,9 +250,13 @@ const joinRoom = async (emptyRooms: string[],
         }
       }
     );
+    logger.info(`Created chat session for room ${roomId}`);
     io.to(roomId).emit("foundChat", { endTime: endTime, name: "user1" });
-    logger.info("Joined into bot " + roomId);
+    logger.info(`Joined into bot in ${roomId}`);
+    const joinTime = getRandomJoinTime();
+    logger.info(`Bot will join in ${joinTime} millis for room ${roomId}`);
     setTimeout(async () => {
+      logger.info(`Bot is joining ${roomId}`);
       // user2 is always bot
       await globalThis.collections.chatSessions?.updateOne(
         { id: roomId },
@@ -182,26 +265,33 @@ const joinRoom = async (emptyRooms: string[],
       const room = await globalThis.collections.chatSessions?.findOne(
         { id: roomId }
       );
-      if (room?.user1.ready) {
+      if (room?.user1.ready && room.endChatTime !== -1) {
+        logger.info(`User is ready, initiating chat for ${roomId}`);
         await initiateChat(roomId, io, socket, room.user2.canSend, room?.user2.goal!, room?.user1.goal!, false, "user2", "user1");
         if (room.user2.canSend) {
+          logger.info(`Sending first bot message in ${roomId}`);
           await sendBotMessage("user2", io, openai, room, roomId);
         }
+      } else {
+        logger.info(`User is not ready yet, waiting for them to accept in room ${roomId}`);
       }
-    }, getRandomJoinTime());
+    }, joinTime);
     setTimeout(async () => {
+      logger.info(`Checking if user is ready in ${roomId}`);
       const room = await globalThis.collections.chatSessions?.findOne(
         { id: roomId }
       );
       // user2 is a bot and always ready by the end
       if (!room?.user1.ready) {
         // remove points from user1
+        logger.info(`User in room ${roomId} is not ready`);
         io.to(roomId).emit("readyExpired");
         io.socketsLeave(roomId);
       }
     }, WAITING_MILLIS);
 
+    logger.info(`Creating a new room for the user who would have joined this room`);
     // create a new room for the new user
-    createNewRoom(emptyRooms, socket, io, openai);
+    await createNewRoom(emptyRooms, socket, io, openai);
   }
 }
