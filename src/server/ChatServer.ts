@@ -137,7 +137,7 @@ class ChatServer extends Server {
         );
         if (room && room.endChatTime >= Date.now()) {
           // Remove points from leaving user, add points to otherLeft user
-          socket.to(id).emit("otherLeft");
+          socket.broadcast.to(id).emit("otherLeft");
           if (room?.user1.socketId === socket.id) {
             await globalThis.collections.chatSessions?.updateOne(
               { id: id },
@@ -155,7 +155,7 @@ class ChatServer extends Server {
           }
         } else if (room && room!.endResultTime >= Date.now()) {
           // Did not pick, add points to user who gets otherResult
-          socket.to(id).emit("otherResult", {
+          socket.broadcast.to(id).emit("otherResult", {
             result: "Did not pick",
             points: 10,
           });
