@@ -1,6 +1,7 @@
 import { Collection, Db, MongoClient } from "mongodb";
 import { ChatSession, UserElements, WaitlistElements } from "src/types";
 import * as dotenv from "dotenv";
+import logger from "jet-logger";
 
 export async function connectToDatabase() {
   dotenv.config();
@@ -17,8 +18,7 @@ export async function connectToDatabase() {
     db.collection<ChatSession>(process.env.PAST_CHAT_SESSION_COLLECTION_NAME!);
   const betaCollection: Collection<WaitlistElements> =
     db.collection<WaitlistElements>(process.env.BETA_COLLECTION_NAME!);
-  console.log(`Successfully connected to database: ${db.databaseName}
-  and collection: ${usersCollection.collectionName}`);
+  logger.imp(`Successfully connected to database ${db.databaseName}`);
   return {
     users: usersCollection,
     waitlist: waitlistCollection,

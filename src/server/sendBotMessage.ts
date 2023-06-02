@@ -10,10 +10,15 @@ import { getRandomTypingDelay } from "./getRandomTypingDelay";
 export const sendBotMessage = async (botUser: string,
   io: SocketServer<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,
   openai: OpenAIApi, room: ChatSession, id: string) => {
+  logger.info(`Attempting to send bot message in room ${id}`);
+  logger.info(`Converting messages to a format readable by ChatGPT in room ${id}`);
   const convertedMessages = convertMessages(botUser, room.messages);
+  logger.info(`Successfully converted messages in room ${id}`);
   let completion: any;
   try {
-    const temperatureRandom = Math.random() * 0.2 + 1.1;
+    logger.info(`Creating chat completion for ChatGPT in room ${id}`);
+    const temperatureRandom = Math.random() * 0.3 + 1.0;
+    logger.info(`Temperature randomly set to ${temperatureRandom} in room ${id}`);
     completion = await openai.createChatCompletion({
       model: "gpt-3.5-turbo",
       messages: convertedMessages,
@@ -24,13 +29,21 @@ export const sendBotMessage = async (botUser: string,
       presence_penalty: -1,
     });
     const completionMessage = completion!.data.choices[0].message?.content!.replace(/["]+/g, "");
+    logger.info(`Completion message successfully generated in room ${id}`);
     const charactersPerSecond = room.user1.name === "Bot" ? room.user1.charactersPerSecond : room.user2.charactersPerSecond;
+    logger.info(`Characters per second is ${charactersPerSecond} in room ${id}`);
+    const randomTypingDelay = getRandomTypingDelay();
+    logger.info(`Random typing delay for this message is ${randomTypingDelay} in room ${id}`);
+    const messageDelay = (completionMessage?.length! / charactersPerSecond) * 1000;
+    logger.info(`Message delay is ${messageDelay} in room ${id}`);
     setTimeout(() => {
+      logger.info(`Emitting typing response in room ${id}`);
       if (room.endChatTime > Date.now()) {
         io.to(room.id).emit("typingResponse", "Chatter");
       }
-    }, getRandomTypingDelay());
+    }, randomTypingDelay);
     setTimeout(async () => {
+      logger.info(`Emitting message in room ${id}`);
       if (room.endChatTime > Date.now()) {
         io.to(room.id).emit("messageResponse", {
           name: botUser,
@@ -47,7 +60,9 @@ export const sendBotMessage = async (botUser: string,
         );
       }
       io.to(room?.id!).emit("typingResponse", "");
-    }, (completionMessage?.length! / charactersPerSecond) * 1000);
+      logger.info(`Bot message successfully sent in room ${id}`);
+    }, messageDelay);
+    logger.info(`Bot message successfully scheduled in room ${id}`);
   } catch (error) {
     logger.err(error);
     io.to(room?.id).emit("otherLeft");
