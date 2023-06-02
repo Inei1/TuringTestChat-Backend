@@ -67,7 +67,7 @@ class ChatServer extends Server {
     const httpServer = http.createServer(this.app);
     const io = new SocketServer(httpServer, {
       cors: {
-        origin: "http://localhost:3000",
+        origin: "https://www.turingtestchat.com",
         methods: ["GET", "POST"],
       }
     });
