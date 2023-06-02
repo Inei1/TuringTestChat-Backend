@@ -9,12 +9,12 @@ import logger from 'jet-logger';
 export const readyChat = async (data: any, io: SocketServer<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,
   socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,
   openai: OpenAIApi) => {
-  logger.info(`Attempting to mark ${data.name} as ready`);
+  logger.info(`Attempting to mark ${data.user} as ready`);
   const id = getRoomId(socket);
   const room = await globalThis.collections.chatSessions?.findOne(
     { id: id }
   );
-  logger.info(`Found room ${id} for ${data.name}`);
+  logger.info(`Found room ${id} for ${data.user}`);
   if (room?.user1.name === data.user) {
     logger.info(`Marking user1 as ready for room ${id}`);
     const otherReady = room!.user2.ready;
