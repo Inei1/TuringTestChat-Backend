@@ -8,21 +8,14 @@ import { readFileSync } from 'fs';
 import { Configuration, OpenAIApi } from 'openai';
 import dotenv from 'dotenv';
 import { connectToDatabase } from './connectToDatabase';
-import passport from 'passport';
 import session from 'express-session';
-import LoginController from '../controllers/LoginController';
 import AccountController from '../controllers/AccountController';
-import passportLocal from "passport-local";
-import { ObjectId } from "mongodb";
-import bcrypt from "bcrypt";
 import MongoStore = require('connect-mongo');
 import { readyChat } from './readyChat';
 import { result } from './result';
 import { message } from './message';
 import { startRoom } from './startRoom';
 import { getRoomId } from './getRoomId';
-
-const LocalStrategy = passportLocal.Strategy;
 
 dotenv.config();
 
@@ -51,43 +44,7 @@ class ChatServer extends Server {
     this.app.use(bodyParser.json());
     this.app.use(bodyParser.urlencoded({ extended: true }));
 
-    passport.serializeUser((user, done) => {
-      done(undefined, user);
-    });
-
-    passport.deserializeUser((id: ObjectId, done) => {
-      try {
-        globalThis.collections.users?.findOne({ _id: id }).then((user) => {
-          done(undefined, user);
-        });
-      } catch (err) {
-        done(err, undefined);
-      }
-    });
-
-    passport.use(new LocalStrategy({ usernameField: "username", passwordField: "password" }, (username, password, done) => {
-      try {
-        globalThis.collections.users?.findOne({ username: username.toLowerCase() }).then((user) => {
-          if (!user) {
-            return done(undefined, false, { message: `User ${username} not found` });
-          }
-          bcrypt.compare(password, user.password).then((valid) => {
-            if (valid) {
-              return done(undefined, user);
-            } else {
-              return done(undefined, false, { message: "Invalid username or password" });
-            }
-          })
-        });
-      } catch (err) {
-        return done(err);
-      }
-    }));
-
-    this.app.use(passport.initialize());
-    this.app.use(passport.session());
-
-    super.addControllers([new LoginController(), new AccountController()]);
+    super.addControllers([new AccountController()]);
     if (process.env.NODE_ENV === 'test') {
       logger.info('Starting server in development mode');
       const msg = this.DEV_MSG + process.env.EXPRESS_PORT;
