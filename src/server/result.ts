@@ -113,6 +113,7 @@ export const result = async (data: any, socket: any) => {
       logger.warn("Invalid user " + data.name + " tried to compute result");
     }
 
+    // give points to otherResult user
     logger.info("Sending other result for room " + id);
     socket.broadcast.to(room?.id).emit("otherResult", {
       result: data.result,

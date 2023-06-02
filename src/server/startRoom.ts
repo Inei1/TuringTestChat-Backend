@@ -153,6 +153,7 @@ const createNewRoom = async (emptyRooms: string[],
       );
       // user1 is a bot and always ready by the end
       if (!room?.user2.ready) {
+        // remove points from user2
         logger.info(`User2 is ready in room ${roomId}`);
         io.to(roomId).emit("readyExpired");
         io.socketsLeave(roomId);
@@ -206,11 +207,13 @@ const joinRoom = async (emptyRooms: string[],
         { id: roomId }
       );
       if (!room?.user1.ready) {
+        // remove points from user1
         logger.info(`User1 did not accept in ${roomId}`);
         io.to(roomId).emit("readyExpired");
         io.socketsLeave(roomId);
       }
       if (!room?.user2.ready) {
+        // remove points from user2
         logger.info(`User2 did not accept in ${roomId}`);
         io.to(roomId).emit("readyExpired");
         io.socketsLeave(roomId);
@@ -280,6 +283,7 @@ const joinRoom = async (emptyRooms: string[],
       );
       // user2 is a bot and always ready by the end
       if (!room?.user1.ready) {
+        // remove points from user1
         logger.info(`User in room ${roomId} is not ready`);
         io.to(roomId).emit("readyExpired");
         io.socketsLeave(roomId);
