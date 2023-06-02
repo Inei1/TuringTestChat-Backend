@@ -26,10 +26,10 @@ export const startRoom = async (emptyRooms: string[],
   logger.info("Attempting to start new room");
   if (emptyRooms.length > 0) {
     logger.info("New room found, attempting to join");
-    joinRoom(emptyRooms, socket, io, openai);
+    await joinRoom(emptyRooms, socket, io, openai);
   } else {
     logger.info("No new rooms found, creating a new one");
-    createNewRoom(emptyRooms, socket, io, openai);
+    await createNewRoom(emptyRooms, socket, io, openai);
   }
 }
 
@@ -136,8 +136,8 @@ const createNewRoom = async (emptyRooms: string[],
         { id: roomId }
       );
       // don't reactivate the chat if it's already active
-      if (room?.user2.ready) {
-        logger.info(`User is ready in room ${roomId}`);
+      if (room?.user2.ready && room.endChatTime !== -1) {
+        logger.info(`User1 is ready in room ${roomId}`);
         await initiateChat(roomId, io, socket, botStart, room?.user1.goal!, room?.user2.goal!, true, "user1", "user2");
         if (botStart) {
           await sendBotMessage("user1", io, openai, room, roomId);
@@ -262,7 +262,7 @@ const joinRoom = async (emptyRooms: string[],
       const room = await globalThis.collections.chatSessions?.findOne(
         { id: roomId }
       );
-      if (room?.user1.ready) {
+      if (room?.user1.ready && room.endChatTime !== -1) {
         logger.info(`User is ready, initiating chat for ${roomId}`);
         await initiateChat(roomId, io, socket, room.user2.canSend, room?.user2.goal!, room?.user1.goal!, false, "user2", "user1");
         if (room.user2.canSend) {
@@ -288,6 +288,6 @@ const joinRoom = async (emptyRooms: string[],
 
     logger.info(`Creating a new room for the user who would have joined this room`);
     // create a new room for the new user
-    createNewRoom(emptyRooms, socket, io, openai);
+    await createNewRoom(emptyRooms, socket, io, openai);
   }
 }
