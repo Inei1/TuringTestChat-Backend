@@ -5,6 +5,7 @@ import { check, validationResult } from "express-validator";
 import { SESv2Client, SendEmailCommand } from "@aws-sdk/client-sesv2";
 import logger from "jet-logger";
 var quickemailverification = require('quickemailverification');
+import bcrypt from "bcrypt";
 
 @Controller('account')
 class AccountController {
@@ -40,73 +41,82 @@ class AccountController {
         succeeded: false,
       });
     }
-
+    const hashedPassword = await bcrypt.hash(req.body.password, 10);
     try {
-      const updateInfo = await globalThis.collections.waitlist?.updateOne(
+      const updateInfo = await globalThis.collections.users?.updateOne(
         { email: req.body.email },
         {
           $setOnInsert: {
             email: req.body.email,
-            comment: req.body.comment,
-            timestamp: Date.now(),
+            username: req.body.username,
+            password: hashedPassword,
+            deception: 0,
+            detection: 0,
+            deceptionWins: 0,
+            detectionWins: 0,
+            deceptionLosses: 0,
+            detectionLosses: 0,
+            creationTime: Date.now(),
           }
         },
         { upsert: true });
       if (updateInfo?.upsertedCount! > 0) {
 
         try {
-          const result = await new SESv2Client({
-            credentials: {
-              accessKeyId: process.env.AWS_ACCESS_KEY!,
-              secretAccessKey: process.env.AWS_SECRET_KEY!,
-            },
-            apiVersion: "2019-09-27",
-            region: "us-east-1"
-          }).send(new SendEmailCommand({
-            Destination: {
-              ToAddresses: [
-                req.body.email,
-              ]
-            },
-            Content: {
-              Simple: {
-                Body: {
-                  Html: {
-                    Charset: "UTF-8",
-                    Data: "<html><p>Thank you for joining Turing Test Chat!<br/>If you have any questions, feel free to reply to this email.<br/> <a href={{amazonSESUnsubscribeUrl}}>Click here to unsubscribe</a></p></html>"
-                  },
-                  Text: {
-                    Charset: "UTF-8",
-                    Data: "Thank you for joining Turing Test Chat!\n\n If you have any questions, feel free to reply to this email.\n\n - TuringTestChat\n{{amazonSESUnsubscribeUrl}}"
-                  }
-                },
-                Subject: {
-                  Charset: "UTF-8",
-                  Data: "Welcome to the Turing Test Chat!"
-                }
-              }
-            },
-            ListManagementOptions: {
-              TopicName: "Account",
-              ContactListName: "TuringTestChat"
-            },
-            FeedbackForwardingEmailAddress: "support@turingtestchat.com",
-            FromEmailAddress: "ttc@turingtestchat.com",
-            ReplyToAddresses: [
-              "support@turingtestchat.com"
-            ]
-          }));
-          logger.info(result.MessageId);
+          // const result = await new SESv2Client({
+          //   credentials: {
+          //     accessKeyId: process.env.AWS_ACCESS_KEY!,
+          //     secretAccessKey: process.env.AWS_SECRET_KEY!,
+          //   },
+          //   apiVersion: "2019-09-27",
+          //   region: "us-east-1"
+          // }).send(new SendEmailCommand({
+          //   Destination: {
+          //     ToAddresses: [
+          //       req.body.email,
+          //     ]
+          //   },
+          //   Content: {
+          //     Simple: {
+          //       Body: {
+          //         Html: {
+          //           Charset: "UTF-8",
+          //           Data: "<html><p>Thank you for joining Turing Test Chat!<br/>If you have any questions, feel free to reply to this email.<br/> <a href={{amazonSESUnsubscribeUrl}}>Click here to unsubscribe</a></p></html>"
+          //         },
+          //         Text: {
+          //           Charset: "UTF-8",
+          //           Data: "Thank you for joining Turing Test Chat!\n\n If you have any questions, feel free to reply to this email.\n\n - TuringTestChat\n{{amazonSESUnsubscribeUrl}}"
+          //         }
+          //       },
+          //       Subject: {
+          //         Charset: "UTF-8",
+          //         Data: "Welcome to the Turing Test Chat!"
+          //       }
+          //     }
+          //   },
+          //   ListManagementOptions: {
+          //     TopicName: "Account",
+          //     ContactListName: "TuringTestChat"
+          //   },
+          //   FeedbackForwardingEmailAddress: "support@turingtestchat.com",
+          //   FromEmailAddress: "ttc@turingtestchat.com",
+          //   ReplyToAddresses: [
+          //     "support@turingtestchat.com"
+          //   ]
+          // }));
+          // logger.info(`Message ID is ${result.MessageId}`);
+          logger.info(`Sent registration email to ${req.body.email}`);
         } catch (err) {
           logger.err(err);
         }
+        logger.info(`Successfully created account for user ${req.body.user}`);
         return res.status(StatusCodes.OK).json({
-          message: "Subscribed to waitlist",
+          message: "Account successfully created! Please log in.",
           succeeded: true,
         });
       } else {
         return res.status(StatusCodes.CONFLICT).json({
-          message: "This email is already added to the waitlist",
+          message: "This username or email is already registered",
           succeeded: false,
         });
       }

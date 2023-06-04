@@ -10,7 +10,7 @@ class ChatController {
   private async loginPassword(req: Request, res: Response) {
     if (req.user) {
       return res.status(200).json({
-        username: req.user,
+        user: req.user,
         succeeded: true,
       });
     }
