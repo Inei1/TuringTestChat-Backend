@@ -110,63 +110,63 @@ class AccountController {
     }
   }
 
-  @Post("beta")
-  @Middleware([check("email").isEmail().withMessage("Invalid email address").escape()])
-  private async addToBeta(req: Request, res: Response) {
-    const result = validationResult(req);
-    if (!result.isEmpty()) {
-      return res.status(StatusCodes.BAD_REQUEST).json({
-        message: "Invalid email",
-        succeeded: false,
-      });
-    }
+  // @Post("beta")
+  // @Middleware([check("email").isEmail().withMessage("Invalid email address").escape()])
+  // private async addToBeta(req: Request, res: Response) {
+  //   const result = validationResult(req);
+  //   if (!result.isEmpty()) {
+  //     return res.status(StatusCodes.BAD_REQUEST).json({
+  //       message: "Invalid email",
+  //       succeeded: false,
+  //     });
+  //   }
 
-    const verification = await new Promise((resolve) => {
-      quickemailverification.client(process.env.QEV_API_KEY).quickemailverification().verify(
-        req.body.email, (err: any, response: any) => {
-          if (err) {
-            logger.err(err);
-          }
-          resolve(response.body.result);
-        });
-    });
+  //   const verification = await new Promise((resolve) => {
+  //     quickemailverification.client(process.env.QEV_API_KEY).quickemailverification().verify(
+  //       req.body.email, (err: any, response: any) => {
+  //         if (err) {
+  //           logger.err(err);
+  //         }
+  //         resolve(response.body.result);
+  //       });
+  //   });
 
-    if (verification !== "valid") {
-      return res.status(StatusCodes.BAD_REQUEST).json({
-        message: "Email failed verification, please check that it was entered correctly.",
-        succeeded: false,
-      });
-    }
+  //   if (verification !== "valid") {
+  //     return res.status(StatusCodes.BAD_REQUEST).json({
+  //       message: "Email failed verification, please check that it was entered correctly.",
+  //       succeeded: false,
+  //     });
+  //   }
 
-    try {
-      const updateInfo = await globalThis.collections.beta?.updateOne(
-        { email: req.body.email },
-        {
-          $setOnInsert: {
-            email: req.body.email,
-            timestamp: Date.now(),
-          }
-        },
-        { upsert: true });
-      if (updateInfo?.upsertedCount! > 0) {
-        return res.status(StatusCodes.OK).json({
-          message: "Subscribed to beta",
-          succeeded: true,
-        });
-      } else {
-        return res.status(StatusCodes.CONFLICT).json({
-          message: "This email is already added to the beta",
-          succeeded: false,
-        });
-      }
-    } catch (error) {
-      console.error(error);
-      return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
-        message: "An unknown error occurred",
-        succeeded: false,
-      });
-    }
-  }
+  //   try {
+  //     const updateInfo = await globalThis.collections.beta?.updateOne(
+  //       { email: req.body.email },
+  //       {
+  //         $setOnInsert: {
+  //           email: req.body.email,
+  //           timestamp: Date.now(),
+  //         }
+  //       },
+  //       { upsert: true });
+  //     if (updateInfo?.upsertedCount! > 0) {
+  //       return res.status(StatusCodes.OK).json({
+  //         message: "Subscribed to beta",
+  //         succeeded: true,
+  //       });
+  //     } else {
+  //       return res.status(StatusCodes.CONFLICT).json({
+  //         message: "This email is already added to the beta",
+  //         succeeded: false,
+  //       });
+  //     }
+  //   } catch (error) {
+  //     console.error(error);
+  //     return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+  //       message: "An unknown error occurred",
+  //       succeeded: false,
+  //     });
+  //   }
+  // }
 
 }
 

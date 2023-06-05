@@ -66,67 +66,67 @@ class ChatServer extends Server {
       }
     });
 
-    io.on("connection", (socket) => {
-      logger.info("User connected: " + socket.id);
+    // io.on("connection", (socket) => {
+    //   logger.info("User connected: " + socket.id);
 
-      socket.on("startRoom", async () => await startRoom(this.emptyRooms, socket, io, this.openai));
+    //   socket.on("startRoom", async () => await startRoom(this.emptyRooms, socket, io, this.openai));
 
-      socket.on("message", async (data) => await message(data, io, socket, this.openai));
+    //   socket.on("message", async (data) => await message(data, io, socket, this.openai));
 
-      socket.on("result", async (data) => await result(data, socket));
+    //   socket.on("result", async (data) => await result(data, socket));
 
-      socket.on("typing", () => socket.broadcast.to(getRoomId(socket)).emit("typingResponse", "Chatter"));
+    //   socket.on("typing", () => socket.broadcast.to(getRoomId(socket)).emit("typingResponse", "Chatter"));
 
-      socket.on("typingStop", () => socket.broadcast.to(getRoomId(socket)).emit("typingResponse", ""));
+    //   socket.on("typingStop", () => socket.broadcast.to(getRoomId(socket)).emit("typingResponse", ""));
 
-      socket.on("readyChat", async (data) => await readyChat(data, io, socket, this.openai));
+    //   socket.on("readyChat", async (data) => await readyChat(data, io, socket, this.openai));
 
-      socket.on("disconnecting", async () => {
-        const id = getRoomId(socket);
-        const room = await globalThis.collections.chatSessions?.findOne(
-          { id: id }
-        );
-        if (room && room.endChatTime >= Date.now()) {
-          // Remove points from leaving user, add points to otherLeft user
-          socket.broadcast.to(id).emit("otherLeft");
-          if (room?.user1.socketId === socket.id) {
-            await globalThis.collections.chatSessions?.updateOne(
-              { id: id },
-              {
-                $set: { "user1.active": false }
-              }
-            );
-          } else if (room?.user2.socketId === socket.id) {
-            await globalThis.collections.chatSessions?.updateOne(
-              { id: id },
-              {
-                $set: { "user2.active": false }
-              }
-            );
-          }
-        } else if (room && room!.endResultTime >= Date.now()) {
-          // Did not pick, add points to user who gets otherResult
-          socket.broadcast.to(id).emit("otherResult", {
-            result: "Did not pick",
-            points: 10,
-          });
-        }
-        if (room?.endChatTime === -1) {
-          // One user did not accept
-          logger.info("User didn't accept: " + socket.id);
-          socket.broadcast.to(id).emit("otherWaitingLeft");
-        }
-        this.emptyRooms = this.emptyRooms.filter((room) => {
-          return room !== id;
-        });
-        logger.info("Room deleted: " + id);
-      });
+    //   socket.on("disconnecting", async () => {
+    //     const id = getRoomId(socket);
+    //     const room = await globalThis.collections.chatSessions?.findOne(
+    //       { id: id }
+    //     );
+    //     if (room && room.endChatTime >= Date.now()) {
+    //       // Remove points from leaving user, add points to otherLeft user
+    //       socket.broadcast.to(id).emit("otherLeft");
+    //       if (room?.user1.socketId === socket.id) {
+    //         await globalThis.collections.chatSessions?.updateOne(
+    //           { id: id },
+    //           {
+    //             $set: { "user1.active": false }
+    //           }
+    //         );
+    //       } else if (room?.user2.socketId === socket.id) {
+    //         await globalThis.collections.chatSessions?.updateOne(
+    //           { id: id },
+    //           {
+    //             $set: { "user2.active": false }
+    //           }
+    //         );
+    //       }
+    //     } else if (room && room!.endResultTime >= Date.now()) {
+    //       // Did not pick, add points to user who gets otherResult
+    //       socket.broadcast.to(id).emit("otherResult", {
+    //         result: "Did not pick",
+    //         points: 10,
+    //       });
+    //     }
+    //     if (room?.endChatTime === -1) {
+    //       // One user did not accept
+    //       logger.info("User didn't accept: " + socket.id);
+    //       socket.broadcast.to(id).emit("otherWaitingLeft");
+    //     }
+    //     this.emptyRooms = this.emptyRooms.filter((room) => {
+    //       return room !== id;
+    //     });
+    //     logger.info("Room deleted: " + id);
+    //   });
 
-      socket.on("disconnect", () => {
-        logger.info("User disconnected: " + socket.id);
-        socket.disconnect();
-      });
-    });
+    //   socket.on("disconnect", () => {
+    //     logger.info("User disconnected: " + socket.id);
+    //     socket.disconnect();
+    //   });
+    // });
 
     httpServer.listen(process.env.PORT, () => {
       logger.imp("Started http server on port " + process.env.PORT);
