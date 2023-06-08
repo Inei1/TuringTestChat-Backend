@@ -4,7 +4,7 @@ export interface AuthToken {
 }
 
 export interface UserElements {
-  user: string;
+  username: string;
   profileImage: string;
   password: string;
   email: string;
@@ -15,6 +15,7 @@ export interface UserElements {
   deceptionWins: number;
   deceptionLosses: number;
   tokens: AuthToken[];
+  playFoundSound: boolean;
 }
 
 export interface WaitlistElements {

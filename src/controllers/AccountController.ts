@@ -44,12 +44,14 @@ class AccountController {
     const hashedPassword = await bcrypt.hash(req.body.password, 10);
     try {
       const updateInfo = await globalThis.collections.users?.updateOne(
-        { email: req.body.email },
+        { email: req.body.email, username: req.body.username },
         {
           $setOnInsert: {
             email: req.body.email,
             username: req.body.username,
             password: hashedPassword,
+            dailyCredits: 0,
+            permanentCredits: 0,
             deception: 0,
             detection: 0,
             deceptionWins: 0,
@@ -57,6 +59,7 @@ class AccountController {
             deceptionLosses: 0,
             detectionLosses: 0,
             creationTime: Date.now(),
+            playFoundSound: false,
           }
         },
         { upsert: true });
@@ -121,7 +124,7 @@ class AccountController {
         });
       }
     } catch (error) {
-      console.error(error);
+      logger.err(error);
       return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
         message: "An unknown error occurred",
         succeeded: false,

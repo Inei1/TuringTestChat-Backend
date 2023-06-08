@@ -13,7 +13,6 @@ import session from 'express-session';
 import LoginController from '../controllers/LoginController';
 import AccountController from '../controllers/AccountController';
 import passportLocal from "passport-local";
-import { ObjectId } from "mongodb";
 import bcrypt from "bcrypt";
 import MongoStore = require('connect-mongo');
 import { readyChat } from './readyChat';
@@ -21,6 +20,8 @@ import { result } from './result';
 import { message } from './message';
 import { startRoom } from './startRoom';
 import { getRoomId } from './getRoomId';
+import SettingsController from '../controllers/SettingsController';
+import cors from "cors";
 
 const LocalStrategy = passportLocal.Strategy;
 
@@ -40,26 +41,39 @@ class ChatServer extends Server {
 
   constructor() {
     super(true);
+    this.app.use(cors());
+    this.app.use(bodyParser.urlencoded({ extended: true }));
+    this.app.use(bodyParser.json());
     this.app.use(session({
       store: MongoStore.create({ mongoUrl: process.env.DB_CONN_STRING }),
       secret: process.env.EXPRESS_SESSION_SECRET!,
       resave: false,
       saveUninitialized: true,
-      cookie: { maxAge: 60 * 15 * 1000, secure: false } // 15 minutes
+      cookie: {
+        maxAge: 60 * 60 * 24 * 1000,
+        httpOnly: false,
+        sameSite: "lax",// process.env.NODE_ENV === "production" ? "none" : "lax",
+        secure: false,// process.env.NODE_ENV === "production" ? true : "auto",
+      } // 24 hours
     }));
     connectToDatabase().then((collections) => globalThis.collections = collections);
-    this.app.use(bodyParser.json());
-    this.app.use(bodyParser.urlencoded({ extended: true }));
 
-    passport.serializeUser((user, done) => {
+    passport.serializeUser((user: any, done) => {
+      logger.info(`Serializing user ${user.username}`);
       done(undefined, user);
     });
 
-    passport.deserializeUser((id: ObjectId, done) => {
+    passport.deserializeUser(async (user: any, done) => {
+      logger.info(`Deserializing user ${user.username}`);
       try {
-        globalThis.collections.users?.findOne({ _id: id }).then((user) => {
-          done(undefined, user);
-        });
+        const foundUser = await globalThis.collections.users?.findOne({ username: user.username });
+        if (foundUser) {
+          logger.info(`Found user ${foundUser.username}`);
+          done(undefined, foundUser);
+        } else {
+          logger.info(`Did not find user ${user.username}`);
+          done("User not found", undefined);
+        }
       } catch (err) {
         done(err, undefined);
       }
@@ -67,6 +81,7 @@ class ChatServer extends Server {
 
     passport.use(new LocalStrategy({ usernameField: "username", passwordField: "password" }, (username, password, done) => {
       try {
+        logger.info(`Authenticating user ${username} using local strategy`);
         globalThis.collections.users?.findOne({ username: username.toLowerCase() }).then((user) => {
           if (!user) {
             return done(undefined, false, { message: `User ${username} not found` });
@@ -87,7 +102,7 @@ class ChatServer extends Server {
     this.app.use(passport.initialize());
     this.app.use(passport.session());
 
-    super.addControllers([new LoginController(), new AccountController()]);
+    super.addControllers([new LoginController(), new AccountController(), new SettingsController()]);
     if (process.env.NODE_ENV === 'test') {
       logger.info('Starting server in development mode');
       const msg = this.DEV_MSG + process.env.EXPRESS_PORT;
