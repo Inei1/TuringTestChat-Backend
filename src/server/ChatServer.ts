@@ -133,7 +133,7 @@ class ChatServer extends Server {
     io.on("connection", (socket) => {
       logger.info("User connected: " + socket.id);
 
-      socket.on("startRoom", async () => await startRoom(this.emptyRooms, socket, io, this.openai));
+      socket.on("startRoom", async (data) => await startRoom(data, this.emptyRooms, socket, io, this.openai));
 
       socket.on("message", async (data) => await message(data, io, socket, this.openai));
 
@@ -154,19 +154,81 @@ class ChatServer extends Server {
           // Remove points from leaving user, add points to otherLeft user
           socket.to(id).emit("otherLeft");
           if (room?.user1.socketId === socket.id) {
+            logger.info(`Marking user ${room?.user1.username} as early leaver`);
             await globalThis.collections.chatSessions?.updateOne(
               { id: id },
               {
                 $set: { "user1.active": false }
               }
             );
+            logger.info(`Deducting early leaver points from user ${room?.user1.username}, and adding to user ${room?.user2.username}`);
+            const leavingUser = await globalThis.collections.users?.findOne(
+              { username: room?.user1.username }
+            );
+            const otherUser = await globalThis.collections.users?.findOne(
+              { username: room?.user2.username }
+            );
+            await globalThis.collections.users?.updateOne(
+              { username: room?.user1.username },
+              {
+                $set: {
+                  deceptionLosses: leavingUser?.deceptionLosses! + 1,
+                  detectionLosses: leavingUser?.detectionLosses! + 1,
+                  detection: leavingUser?.detection! - 4,
+                  deception: leavingUser?.deception! - 2,
+                }
+              }
+            );
+            await globalThis.collections.users?.updateOne(
+              { username: room?.user2.username },
+              {
+                $set: {
+                  deceptionWins: otherUser?.deceptionWins! + 1,
+                  detectionWins: otherUser?.detectionWins! + 1,
+                  detection: otherUser?.detection! + 4,
+                  deception: otherUser?.deception! + 2,
+                }
+              }
+            );
+            logger.info(`Successfully deducted early leaver points from user ${room?.user1.username}, and added to user ${room?.user2.username}`);
           } else if (room?.user2.socketId === socket.id) {
+            logger.info(`Marking user ${room?.user2.username} as early leaver`);
             await globalThis.collections.chatSessions?.updateOne(
               { id: id },
               {
                 $set: { "user2.active": false }
               }
             );
+            logger.info(`Deducting early leaver points from user ${room?.user2.username}, and adding to user ${room?.user2.username}`);
+            const leavingUser = await globalThis.collections.users?.findOne(
+              { username: room?.user2.username }
+            );
+            const otherUser = await globalThis.collections.users?.findOne(
+              { username: room?.user1.username }
+            );
+            await globalThis.collections.users?.updateOne(
+              { username: room?.user2.username },
+              {
+                $set: {
+                  deceptionLosses: leavingUser?.deceptionLosses! + 1,
+                  detectionLosses: leavingUser?.detectionLosses! + 1,
+                  detection: leavingUser?.detection! - 4,
+                  deception: leavingUser?.deception! - 2,
+                }
+              }
+            );
+            await globalThis.collections.users?.updateOne(
+              { username: room?.user1.username },
+              {
+                $set: {
+                  deceptionWins: otherUser?.deceptionWins! + 1,
+                  detectionWins: otherUser?.detectionWins! + 1,
+                  detection: otherUser?.detection! + 4,
+                  deception: otherUser?.deception! + 2,
+                }
+              }
+            );
+            logger.info(`Successfully deducted early leaver points from user ${room?.user2.username}, and added to user ${room?.user1.username}`);
           }
         } else if (room && room!.endResultTime >= Date.now()) {
           // Did not pick, add points to user who gets otherResult
@@ -174,11 +236,93 @@ class ChatServer extends Server {
             result: "Did not pick",
             points: 10,
           });
+          if (room?.user1.socketId === socket.id) {
+            const leavingUser = await globalThis.collections.users?.findOne(
+              { username: room?.user1.username }
+            );
+            const otherUser = await globalThis.collections.users?.findOne(
+              { username: room?.user2.username }
+            );
+            await globalThis.collections.users?.updateOne(
+              { username: room?.user1.username },
+              {
+                $set: {
+                  detectionLosses: leavingUser?.detectionLosses! + 1,
+                  detection: leavingUser?.detection! - 5,
+                }
+              }
+            );
+            await globalThis.collections.users?.updateOne(
+              { username: room?.user2.username },
+              {
+                $set: {
+                  detectionWins: otherUser?.deceptionWins! + 1,
+                  detection: otherUser?.deception! + 5,
+                }
+              }
+            );
+          } else if (room?.user2.socketId === socket.id) {
+            const leavingUser = await globalThis.collections.users?.findOne(
+              { username: room?.user2.username }
+            );
+            const otherUser = await globalThis.collections.users?.findOne(
+              { username: room?.user1.username }
+            );
+            await globalThis.collections.users?.updateOne(
+              { username: room?.user2.username },
+              {
+                $set: {
+                  detectionLosses: leavingUser?.detectionLosses! + 1,
+                  detection: leavingUser?.detection! - 5,
+                }
+              }
+            );
+            await globalThis.collections.users?.updateOne(
+              { username: room?.user1.username },
+              {
+                $set: {
+                  detectionWins: otherUser?.deceptionWins! + 1,
+                  detection: otherUser?.deception! + 5,
+                }
+              }
+            );
+          }
         }
         if (room?.endChatTime === -1) {
           // One user did not accept
           logger.info("User didn't accept: " + socket.id);
           socket.broadcast.to(id).emit("otherWaitingLeft");
+          if (room?.user1.socketId === socket.id) {
+            const leavingUser = await globalThis.collections.users?.findOne(
+              { username: room?.user1.username }
+            );
+            await globalThis.collections.users?.updateOne(
+              { username: room?.user1.username },
+              {
+                $set: {
+                  deceptionLosses: leavingUser?.deceptionLosses! + 1,
+                  detectionLosses: leavingUser?.detectionLosses! + 1,
+                  detection: leavingUser?.detection! - 2,
+                  deception: leavingUser?.deception! - 1,
+                }
+              }
+            );
+          }
+        } else if (room?.user2.socketId === socket.id) {
+          const leavingUser = await globalThis.collections.users?.findOne(
+            { username: room?.user2.username }
+          );
+          await globalThis.collections.users?.updateOne(
+            { username: room?.user2.username },
+            {
+              $set: {
+                deceptionLosses: leavingUser?.deceptionLosses! + 1,
+                detectionLosses: leavingUser?.detectionLosses! + 1,
+                detection: leavingUser?.detection! - 2,
+                deception: leavingUser?.deception! - 1,
+              }
+            }
+          );
         }
         this.emptyRooms = this.emptyRooms.filter((room) => {
           return room !== id;

@@ -32,7 +32,8 @@ export const readyChat = async (data: any, io: SocketServer<DefaultEventsMap, De
             goal: room!.user1.goal,
             canSend: canSend,
             active: true,
-            charactersPerSecond: room?.user1.charactersPerSecond!
+            charactersPerSecond: room?.user1.charactersPerSecond!,
+            username: data.username,
           }
         }
       }
@@ -68,7 +69,8 @@ export const readyChat = async (data: any, io: SocketServer<DefaultEventsMap, De
             goal: room!.user2.goal,
             canSend: canSend,
             active: true,
-            charactersPerSecond: room?.user2.charactersPerSecond!
+            charactersPerSecond: room?.user2.charactersPerSecond!,
+            username: data.username,
           }
         }
       }

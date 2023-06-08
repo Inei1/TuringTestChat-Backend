@@ -96,17 +96,69 @@ export const result = async (data: any, socket: any) => {
       otherPoints + ", other " + other);
     logger.info("Attempting to update user in the database");
     if (data.name === room?.user1.name) {
-        logger.info(`Updated result for user1 in ${id}`);
-        await globalThis.collections.chatSessions?.updateOne(
-          { id: id },
-          { $set: { "user1.result": data.result } }
-        );
+      logger.info(`Updated result for user1 in ${id}`);
+      await globalThis.collections.chatSessions?.updateOne(
+        { id: id },
+        { $set: { "user1.result": data.result } }
+      );
+      const sendingUser = await globalThis.collections.users?.findOne(
+        { username: room?.user1.username }
+      );
+      const receivingUser = await globalThis.collections.users?.findOne(
+        { username: room?.user2.username }
+      );
+      await globalThis.collections.users?.updateOne(
+        { username: room?.user1.username },
+        {
+          $set: {
+            detectionWins: sendingUser?.detectionWins! + (selfPoints > 0 ? 1 : 0),
+            detectionLosses: sendingUser?.detectionLosses! + (selfPoints < 0 ? 1 : 0),
+            detection: sendingUser?.detection! + selfPoints,
+          }
+        }
+      );
+      await globalThis.collections.users?.updateOne(
+        { username: room?.user2.username },
+        {
+          $set: {
+            deceptionWins: receivingUser?.deceptionWins! + (otherPoints > 0 ? 1 : 0),
+            deceptionLosses: receivingUser?.deceptionLosses! + (otherPoints < 0 ? 1 : 0),
+            deception: receivingUser?.deception! + otherPoints,
+          }
+        }
+      );
       logger.info("Successfully updated user1 in room " + id);
     } else if (data.name === room?.user2.name) {
       logger.info(`Updated result for user2 in ${id}`);
       await globalThis.collections.chatSessions?.updateOne(
         { id: id },
         { $set: { "user2.result": data.result } }
+      );
+      const sendingUser = await globalThis.collections.users?.findOne(
+        { username: room?.user2.username }
+      );
+      const receivingUser = await globalThis.collections.users?.findOne(
+        { username: room?.user1.username }
+      );
+      await globalThis.collections.users?.updateOne(
+        { username: room?.user2.username },
+        {
+          $set: {
+            detectionWins: sendingUser?.detectionWins! + (selfPoints > 0 ? 1 : 0),
+            detectionLosses: sendingUser?.detectionLosses! + (selfPoints < 0 ? 1 : 0),
+            detection: sendingUser?.detection! + selfPoints,
+          }
+        }
+      );
+      await globalThis.collections.users?.updateOne(
+        { username: room?.user1.username },
+        {
+          $set: {
+            deceptionWins: receivingUser?.deceptionWins! + (otherPoints > 0 ? 1 : 0),
+            deceptionLosses: receivingUser?.deceptionLosses! + (otherPoints < 0 ? 1 : 0),
+            deception: receivingUser?.deception! + otherPoints,
+          }
+        }
       );
       logger.info("Successfully updated user2 in room " + id);
     } else {

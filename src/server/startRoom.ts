@@ -19,21 +19,21 @@ const WAITING_MILLIS = 30000;
 // Because of this, we need to have the chance of queueing into a bot instead of a player when finding
 // a game to be 33%. The probability of queueing into a bot is 1/4 + (3/4 * 1/3) = 50%.
 // The probability of queueing into a human is (3/4 * 2/3) = 50%.
-export const startRoom = async (emptyRooms: string[],
+export const startRoom = async (data: any, emptyRooms: string[],
   socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,
   io: SocketServer<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,
   openai: OpenAIApi) => {
   logger.info("Attempting to start new room");
   if (emptyRooms.length > 0) {
     logger.info("New room found, attempting to join");
-    await joinRoom(emptyRooms, socket, io, openai);
+    await joinRoom(data, emptyRooms, socket, io, openai);
   } else {
     logger.info("No new rooms found, creating a new one");
-    await createNewRoom(emptyRooms, socket, io, openai);
+    await createNewRoom(data, emptyRooms, socket, io, openai);
   }
 }
 
-const createNewRoom = async (emptyRooms: string[],
+const createNewRoom = async (data: any, emptyRooms: string[],
   socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,
   io: SocketServer<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,
   openai: OpenAIApi) => {
@@ -61,7 +61,8 @@ const createNewRoom = async (emptyRooms: string[],
             goal: getRandomPercent() < 50 ? "Human" : "Bot",
             canSend: user1Start,
             active: true,
-            charactersPerSecond: getRandomCharactersPerSecond()
+            charactersPerSecond: getRandomCharactersPerSecond(),
+            username: data.username,
           },
           user2: {
             name: "user2",
@@ -72,7 +73,8 @@ const createNewRoom = async (emptyRooms: string[],
             goal: getRandomPercent() < 50 ? "Human" : "Bot",
             canSend: !user1Start,
             active: true,
-            charactersPerSecond: getRandomCharactersPerSecond()
+            charactersPerSecond: getRandomCharactersPerSecond(),
+            username: "",
           }
         });
     } catch (error) {
@@ -105,7 +107,8 @@ const createNewRoom = async (emptyRooms: string[],
           goal: getRandomPercent() < 50 ? "Human" : "Bot",
           canSend: botStart,
           active: true,
-          charactersPerSecond: getRandomCharactersPerSecond()
+          charactersPerSecond: getRandomCharactersPerSecond(),
+          username: "",
         },
         user2: {
           name: "user2",
@@ -116,7 +119,8 @@ const createNewRoom = async (emptyRooms: string[],
           goal: getRandomPercent() < 50 ? "Human" : "Bot",
           canSend: !botStart,
           active: true,
-          charactersPerSecond: getRandomCharactersPerSecond()
+          charactersPerSecond: getRandomCharactersPerSecond(),
+          username: data.username,
         }
       });
     } catch (error) {
@@ -164,7 +168,7 @@ const createNewRoom = async (emptyRooms: string[],
   }
 }
 
-const joinRoom = async (emptyRooms: string[],
+const joinRoom = async (data: any, emptyRooms: string[],
   socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,
   io: SocketServer<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,
   openai: OpenAIApi) => {
@@ -189,7 +193,8 @@ const joinRoom = async (emptyRooms: string[],
             goal: getRandomPercent() < 50 ? "Human" : "Bot",
             canSend: room?.user2.canSend!,
             active: true,
-            charactersPerSecond: getRandomCharactersPerSecond()
+            charactersPerSecond: getRandomCharactersPerSecond(),
+            username: data.username
           }
         }
       }
@@ -241,7 +246,8 @@ const joinRoom = async (emptyRooms: string[],
             goal: getRandomPercent() < 50 ? "Human" : "Bot",
             canSend: room?.user2.canSend!,
             active: true,
-            charactersPerSecond: getRandomCharactersPerSecond()
+            charactersPerSecond: getRandomCharactersPerSecond(),
+            username: "",
           },
           messages: [{
             name: "System",
@@ -292,6 +298,6 @@ const joinRoom = async (emptyRooms: string[],
 
     logger.info(`Creating a new room for the user who would have joined this room`);
     // create a new room for the new user
-    await createNewRoom(emptyRooms, socket, io, openai);
+    await createNewRoom(data, emptyRooms, socket, io, openai);
   }
 }
