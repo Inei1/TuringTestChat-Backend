@@ -45,6 +45,7 @@ const createNewRoom = async (data: any, emptyRooms: string[],
     logger.info(`Queuing normally for room ${roomId}`);
     const user1Start = getRandomPercent() < 50;
     logger.info(`Is user1 starting? ${user1Start}`);
+    logger.info(`username of user1 is ${data.username}`);
     try {
       await globalThis.collections.chatSessions?.insertOne(
         {
@@ -89,6 +90,8 @@ const createNewRoom = async (data: any, emptyRooms: string[],
     const endTime = Date.now() + WAITING_MILLIS;
     const botStart = getRandomPercent() < 50;
     logger.info(`End time is ${endTime} for ${roomId}`);
+    logger.info(`Is bot starting? ${botStart}`);
+    logger.info(`username of user1 is ${data.username}`);
     try {
       await globalThis.collections.chatSessions?.insertOne({
         endChatTime: -1,
@@ -160,7 +163,7 @@ const createNewRoom = async (data: any, emptyRooms: string[],
         // remove points from user2
         logger.info(`User2 is ready in room ${roomId}`);
         io.to(roomId).emit("readyExpired");
-        io.socketsLeave(roomId);
+        io.in(roomId).disconnectSockets();
       } else {
         logger.info(`User2 is not ready in room ${roomId}`);
       }
@@ -176,6 +179,7 @@ const joinRoom = async (data: any, emptyRooms: string[],
   // 66% chance to queue into a human like normal.
   if (botChat <= 66) {
     logger.info("New room is queuing like normal");
+    logger.info(`Username of joining user is ${data.username}`);
     const roomId = emptyRooms.pop()!
     const room = await globalThis.collections.chatSessions?.findOne(
       { id: roomId }
@@ -215,13 +219,13 @@ const joinRoom = async (data: any, emptyRooms: string[],
         // remove points from user1
         logger.info(`User1 did not accept in ${roomId}`);
         io.to(roomId).emit("readyExpired");
-        io.socketsLeave(roomId);
+        io.in(roomId).disconnectSockets();
       }
       if (!room?.user2.ready) {
         // remove points from user2
         logger.info(`User2 did not accept in ${roomId}`);
         io.to(roomId).emit("readyExpired");
-        io.socketsLeave(roomId);
+        io.in(roomId).disconnectSockets();
       }
     }, WAITING_MILLIS);
     logger.info(`Successfully sent room found message for room ${roomId}`);
@@ -292,7 +296,7 @@ const joinRoom = async (data: any, emptyRooms: string[],
         // remove points from user1
         logger.info(`User in room ${roomId} is not ready`);
         io.to(roomId).emit("readyExpired");
-        io.socketsLeave(roomId);
+        io.in(roomId).disconnectSockets();
       }
     }, WAITING_MILLIS);
 

@@ -17,7 +17,6 @@ class ChatController {
               playFoundSound: req.body.playFoundSound,
             }
           });
-          console.log(updateInfo);
         if (updateInfo?.upsertedCount! > 0) {
           logger.info("Successfully updated notification sound playback");
         }

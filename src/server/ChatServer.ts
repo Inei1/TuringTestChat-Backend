@@ -327,7 +327,22 @@ class ChatServer extends Server {
         this.emptyRooms = this.emptyRooms.filter((room) => {
           return room !== id;
         });
-        logger.info("Room deleted: " + id);
+        console.log(io.sockets.adapter.rooms);
+        logger.info(`room ${id} deleted, moving to past chat sessions`);
+        try {
+          const newRoom = await globalThis.collections.chatSessions?.findOne(
+            { id: id }
+          );
+          if (newRoom) {
+            await globalThis.collections.pastChatSessions?.insertOne(newRoom!);
+            await globalThis.collections.chatSessions?.deleteOne(newRoom!);
+          } else {
+            logger.info(`room ${id} is already deleted, it may have been deleted previously or there is a bug.`);
+          }
+        } catch (err) {
+          logger.err(`An error occurred when attempting to move room ${id} to past chat sessions`);
+          logger.err(err);
+        }
       });
 
       socket.on("disconnect", () => {

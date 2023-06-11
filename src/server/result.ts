@@ -11,9 +11,16 @@ const MAJOR_CORRECT_POINTS = 10;
 export const result = async (data: any, socket: any) => {
   logger.info("Calculating result from " + data);
   const id = getRoomId(socket);
-  const endTime = await globalThis.collections.chatSessions?.findOne(
+  let pastSession = false;
+  let endTime = await globalThis.collections.chatSessions?.findOne(
     { id: id }
   );
+  if (!endTime) {
+    pastSession = true;
+    endTime = await globalThis.collections.pastChatSessions?.findOne(
+      { id: id }
+    );
+  }
   logger.info("Room " + id + " found for result");
   // add another second to send response
   if (endTime!.endResultTime + 1000 >= Date.now()) {
@@ -21,9 +28,16 @@ export const result = async (data: any, socket: any) => {
     let otherPoints = 0;
     let selfPoints = 0;
     let other = "";
-    const room = await globalThis.collections.chatSessions?.findOne(
-      { id: id }
-    );
+    let room = null;
+    if (pastSession) {
+      room = await globalThis.collections.pastChatSessions?.findOne(
+        { id: id }
+      );
+    } else {
+      room = await globalThis.collections.chatSessions?.findOne(
+        { id: id }
+      );
+    }
     const receiver = data.name === room?.user1.name ? room?.user2 : room?.user1;
     logger.info("Computing result in room " + id + " with data " + data);
     if (data.result === "Definitely a human") {
@@ -97,10 +111,17 @@ export const result = async (data: any, socket: any) => {
     logger.info("Attempting to update user in the database");
     if (data.name === room?.user1.name) {
       logger.info(`Updated result for user1 in ${id}`);
-      await globalThis.collections.chatSessions?.updateOne(
-        { id: id },
-        { $set: { "user1.result": data.result } }
-      );
+      if (pastSession) {
+        await globalThis.collections.pastChatSessions?.updateOne(
+          { id: id },
+          { $set: { "user1.result": data.result } }
+        );
+      } else {
+        await globalThis.collections.chatSessions?.updateOne(
+          { id: id },
+          { $set: { "user1.result": data.result } }
+        );
+      }
       const sendingUser = await globalThis.collections.users?.findOne(
         { username: room?.user1.username }
       );
@@ -130,10 +151,17 @@ export const result = async (data: any, socket: any) => {
       logger.info("Successfully updated user1 in room " + id);
     } else if (data.name === room?.user2.name) {
       logger.info(`Updated result for user2 in ${id}`);
-      await globalThis.collections.chatSessions?.updateOne(
-        { id: id },
-        { $set: { "user2.result": data.result } }
-      );
+      if (pastSession) {
+        await globalThis.collections.pastChatSessions?.updateOne(
+          { id: id },
+          { $set: { "user2.result": data.result } }
+        );
+      } else {
+        await globalThis.collections.chatSessions?.updateOne(
+          { id: id },
+          { $set: { "user2.result": data.result } }
+        );
+      }
       const sendingUser = await globalThis.collections.users?.findOne(
         { username: room?.user2.username }
       );

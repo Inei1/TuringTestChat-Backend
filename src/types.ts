@@ -5,7 +5,6 @@ export interface AuthToken {
 
 export interface UserElements {
   username: string;
-  profileImage: string;
   password: string;
   email: string;
   detection: number;
@@ -16,6 +15,10 @@ export interface UserElements {
   deceptionLosses: number;
   tokens: AuthToken[];
   playFoundSound: boolean;
+  currentDailyCredits: number;
+  maximumDailyCredits: number;
+  permanentCredits: number;
+  creationTime: number;
 }
 
 export interface WaitlistElements {
