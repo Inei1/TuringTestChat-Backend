@@ -35,6 +35,18 @@ class ChatServer extends Server {
     apiKey: this.apiKey,
   });
   openai = new OpenAIApi(this.config);
+  sessionMiddleware = session({
+    store: MongoStore.create({ mongoUrl: process.env.DB_CONN_STRING }),
+    secret: process.env.EXPRESS_SESSION_SECRET!,
+    resave: false,
+    saveUninitialized: true,
+    cookie: {
+      maxAge: 60 * 60 * 24 * 1000,
+      httpOnly: false,
+      sameSite: "lax",// process.env.NODE_ENV === "production" ? "none" : "lax",
+      secure: false,// process.env.NODE_ENV === "production" ? true : "auto",
+    } // 24 hours
+  });
 
   private readonly DEV_MSG = 'Express Server is running in development mode. ' +
     'No front-end content is being served.';
@@ -44,20 +56,8 @@ class ChatServer extends Server {
     this.app.use(cors());
     this.app.use(bodyParser.urlencoded({ extended: true }));
     this.app.use(bodyParser.json());
-    this.app.use(session({
-      store: MongoStore.create({ mongoUrl: process.env.DB_CONN_STRING }),
-      secret: process.env.EXPRESS_SESSION_SECRET!,
-      resave: false,
-      saveUninitialized: true,
-      cookie: {
-        maxAge: 60 * 60 * 24 * 1000,
-        httpOnly: false,
-        sameSite: "lax",// process.env.NODE_ENV === "production" ? "none" : "lax",
-        secure: false,// process.env.NODE_ENV === "production" ? true : "auto",
-      } // 24 hours
-    }));
+    this.app.use(this.sessionMiddleware);
     connectToDatabase().then((collections) => globalThis.collections = collections);
-
     passport.serializeUser((user: any, done) => {
       logger.info(`Serializing user ${user.username}`);
       done(undefined, user);
@@ -127,6 +127,18 @@ class ChatServer extends Server {
       cors: {
         origin: "http://localhost:3000",
         methods: ["GET", "POST"],
+      }
+    });
+
+    const wrap = (middleware: any) => (socket: any, next: any) => middleware(socket.request, {}, next);
+    io.use(wrap(this.sessionMiddleware));
+    io.use(wrap(passport.initialize()));
+    io.use(wrap(passport.session()));
+    io.use((socket: any, next: any) => {
+      if (socket.request.user) {
+        next();
+      } else {
+        next(new Error('unauthorized'))
       }
     });
 
