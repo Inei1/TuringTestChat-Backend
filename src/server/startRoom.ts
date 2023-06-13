@@ -28,7 +28,7 @@ export const startRoom = async (data: any, emptyRooms: string[],
     const user = await globalThis.collections.users?.findOne(
       { username: data.username },
     );
-    if (user && user.currentDailyCredits <= 0) {
+    if (user && user.currentDailyCredits <= 0 && user.permanentCredits <= 0) {
       logger.info("User attempted to join game with no credits remaining");
     } else {
       logger.info("Attempting to start new room");
@@ -145,15 +145,29 @@ const createNewRoom = async (user: UserElements, emptyRooms: string[],
     socket.join(roomId);
     socket.emit("foundChat", { endTime: endTime, name: "user2" });
     try {
-      await globalThis.collections.users?.updateOne(
-        { username: user.username },
-        {
-          $set: {
-            currentDailyCredits: user?.currentDailyCredits! - 1
+      if (user.currentDailyCredits > 0) {
+        await globalThis.collections.users?.updateOne(
+          { username: user.username },
+          {
+            $set: {
+              currentDailyCredits: user?.currentDailyCredits! - 1
+            }
           }
-        }
-      );
-      logger.info(`Removed one credit from ${user?.username}`);
+        );
+        logger.info(`Removed one daily credit from ${user?.username}`);
+      } else if (user.permanentCredits > 0) {
+        await globalThis.collections.users?.updateOne(
+          { username: user.username },
+          {
+            $set: {
+              permanentCredits: user?.permanentCredits! - 1
+            }
+          }
+        );
+        logger.info(`Removed one permanent credit from ${user?.username}`);
+      } else {
+        logger.err("User somehow has no credits?");
+      }
     } catch (err) {
       logger.err("Failed to remove a credit from the joining user");
       logger.err(err);
@@ -241,25 +255,52 @@ const joinRoom = async (user: UserElements, emptyRooms: string[],
       const otherUser = await globalThis.collections.users?.findOne(
         {username: room?.user1.username}
       );
-      console.log(otherUser);
-      await globalThis.collections.users?.updateOne(
-        { username: user.username },
-        {
-          $set: {
-            currentDailyCredits: user?.currentDailyCredits! - 1
+      if (user.currentDailyCredits > 0) {
+        await globalThis.collections.users?.updateOne(
+          { username: user.username },
+          {
+            $set: {
+              currentDailyCredits: user?.currentDailyCredits! - 1
+            }
           }
-        }
-      );
-      logger.info(`Removed one credit from ${user.username}`);
-      await globalThis.collections.users?.updateOne(
-        { username: otherUser?.username },
-        {
-          $set: {
-            currentDailyCredits: otherUser?.currentDailyCredits! - 1
+        );
+        logger.info(`Removed one daily credit from ${user?.username}`);
+      } else if (user.permanentCredits > 0) {
+        await globalThis.collections.users?.updateOne(
+          { username: user.username },
+          {
+            $set: {
+              permanentCredits: user?.permanentCredits! - 1
+            }
           }
-        }
-      );
-      logger.info(`Removed one credit from ${otherUser?.username}`);
+        );
+        logger.info(`Removed one permanent credit from ${user?.username}`);
+      } else {
+        logger.err("User somehow has no credits?");
+      }
+      if (otherUser?.currentDailyCredits! > 0) {
+        await globalThis.collections.users?.updateOne(
+          { username: otherUser?.username },
+          {
+            $set: {
+              currentDailyCredits: otherUser?.currentDailyCredits! - 1
+            }
+          }
+        );
+        logger.info(`Removed one daily credit from ${user?.username}`);
+      } else if (otherUser?.permanentCredits! > 0) {
+        await globalThis.collections.users?.updateOne(
+          { username: otherUser?.username },
+          {
+            $set: {
+              permanentCredits: otherUser?.permanentCredits! - 1
+            }
+          }
+        );
+        logger.info(`Removed one permanent credit from ${otherUser?.username}`);
+      } else {
+        logger.err("User somehow has no credits?");
+      }
     } catch (err) {
       logger.err("Failed to remove a credit from both usera");
       logger.err(err);
@@ -320,14 +361,27 @@ const joinRoom = async (user: UserElements, emptyRooms: string[],
       const user = await globalThis.collections.users?.findOne(
         {username: room?.user1.username}
       );
-      await globalThis.collections.users?.updateOne(
-        { username: user?.username },
-        {
-          $set: {
-            currentDailyCredits: user?.currentDailyCredits! - 1
+      if (user?.currentDailyCredits! > 0) {
+        await globalThis.collections.users?.updateOne(
+          { username: user?.username },
+          {
+            $set: {
+              currentDailyCredits: user?.currentDailyCredits! - 1
+            }
           }
-        }
-      );
+        );
+      } else if (user?.permanentCredits! > 0) {
+        await globalThis.collections.users?.updateOne(
+          { username: user?.username },
+          {
+            $set: {
+              permanentCredits: user?.permanentCredits! - 1
+            }
+          }
+        );
+      } else {
+        logger.err("User somehow has no credits?");
+      }
       logger.info(`Removed one credit from ${user?.username}`);
     } catch (err) {
       logger.err("Failed to remove a credit from the joining user");
