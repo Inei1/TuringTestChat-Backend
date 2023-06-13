@@ -308,8 +308,11 @@ class ChatServer extends Server {
             const leavingUser = await globalThis.collections.users?.findOne(
               { username: room?.user1.username }
             );
+            const otherUser = await globalThis.collections.users?.findOne(
+              { username: room?.user2.username }
+            );
             await globalThis.collections.users?.updateOne(
-              { username: room?.user1.username },
+              { username: leavingUser?.username },
               {
                 $set: {
                   deceptionLosses: leavingUser?.deceptionLosses! + 1,
@@ -319,13 +322,25 @@ class ChatServer extends Server {
                 }
               }
             );
+            // Add a credit back to the other user
+            await globalThis.collections.users?.updateOne(
+              { username: otherUser?.username },
+              {
+                $set: {
+                  permanentCredits: otherUser?.permanentCredits! + 1
+                }
+              }
+            );
           }
         } else if (room?.user2.socketId === socket.id) {
           const leavingUser = await globalThis.collections.users?.findOne(
             { username: room?.user2.username }
           );
+          const otherUser = await globalThis.collections.users?.findOne(
+            { username: room?.user1.username }
+          );
           await globalThis.collections.users?.updateOne(
-            { username: room?.user2.username },
+            { username: leavingUser?.username },
             {
               $set: {
                 deceptionLosses: leavingUser?.deceptionLosses! + 1,
@@ -335,11 +350,19 @@ class ChatServer extends Server {
               }
             }
           );
+          // Add a credit back to the other user
+          await globalThis.collections.users?.updateOne(
+            { username: otherUser?.username },
+            {
+              $set: {
+                permanentCredits: otherUser?.permanentCredits! + 1
+              }
+            }
+          );
         }
         this.emptyRooms = this.emptyRooms.filter((room) => {
           return room !== id;
         });
-        console.log(io.sockets.adapter.rooms);
         logger.info(`room ${id} deleted, moving to past chat sessions`);
         try {
           const newRoom = await globalThis.collections.chatSessions?.findOne(
