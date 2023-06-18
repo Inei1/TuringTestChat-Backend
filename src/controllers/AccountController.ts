@@ -2,10 +2,10 @@ import { Controller, Get, Middleware, Post } from "@overnightjs/core";
 import { Request, Response } from 'express';
 import { StatusCodes } from "http-status-codes";
 import { check, validationResult } from "express-validator";
-import { SESv2Client, SendEmailCommand } from "@aws-sdk/client-sesv2";
 import logger from "jet-logger";
 var quickemailverification = require('quickemailverification');
 import bcrypt from "bcrypt";
+import { SESv2Client, SendEmailCommand } from "@aws-sdk/client-sesv2";
 
 @Controller('account')
 class AccountController {
@@ -25,119 +25,154 @@ class AccountController {
       });
     }
 
-    const verification = await new Promise((resolve) => {
-      quickemailverification.client(process.env.QEV_API_KEY).quickemailverification().verify(
-        req.body.email, (err: any, response: any) => {
-          if (err) {
-            logger.err(err);
-          }
-          resolve(response.body.result);
-        });
-    });
+    // const verification = await new Promise((resolve) => {
+    //   quickemailverification.client(process.env.QEV_API_KEY).quickemailverification().verify(
+    //     req.body.email, (err: any, response: any) => {
+    //       if (err) {
+    //         logger.err(err);
+    //       }
+    //       resolve(response.body.result);
+    //     });
+    // });
 
-    if (verification !== "valid") {
-      return res.status(StatusCodes.BAD_REQUEST).json({
-        message: "Email failed verification, please check that it was entered correctly.",
-        succeeded: false,
-      });
-    }
+    // if (verification !== "valid") {
+    //   return res.status(StatusCodes.BAD_REQUEST).json({
+    //     message: "Email failed verification, please check that it was entered correctly.",
+    //     succeeded: false,
+    //   });
+    // }
     const hashedPassword = await bcrypt.hash(req.body.password, 10);
     try {
-      const updateInfo = await globalThis.collections.users?.updateOne(
-        { email: req.body.email, username: req.body.username },
-        {
-          $setOnInsert: {
-            email: req.body.email,
-            username: req.body.username,
-            password: hashedPassword,
-            dailyCredits: 0,
-            permanentCredits: 0,
-            deception: 0,
-            detection: 0,
-            deceptionWins: 0,
-            detectionWins: 0,
-            deceptionLosses: 0,
-            detectionLosses: 0,
-            creationTime: Date.now(),
-            playFoundSound: false,
+      const existingUser = await globalThis.collections.users?.findOne(
+        { $or: [{ email: req.body.email }, { username: req.body.username }] }
+      );
+      logger.info(`Existing user for account is ${existingUser}`);
+      if (!existingUser) {
+        const updateInfo = await globalThis.collections.users?.updateOne(
+          { email: req.body.email, username: req.body.username },
+          {
+            $setOnInsert: {
+              email: req.body.email,
+              username: req.body.username,
+              password: hashedPassword,
+              dailyCredits: 0,
+              permanentCredits: 0,
+              deception: 0,
+              detection: 0,
+              deceptionWins: 0,
+              detectionWins: 0,
+              deceptionLosses: 0,
+              detectionLosses: 0,
+              creationTime: Date.now(),
+              playFoundSound: false,
+            }
+          },
+          { upsert: true });
+        if (updateInfo?.upsertedCount! > 0) {
+          try {
+            // const result = await new SESv2Client({
+            //   credentials: {
+            //     accessKeyId: process.env.AWS_ACCESS_KEY!,
+            //     secretAccessKey: process.env.AWS_SECRET_KEY!,
+            //   },
+            //   apiVersion: "2019-09-27",
+            //   region: "us-east-1"
+            // }).send(new SendEmailCommand({
+            //   Destination: {
+            //     ToAddresses: [
+            //       req.body.email,
+            //     ]
+            //   },
+            //   Content: {
+            //     Simple: {
+            //       Body: {
+            //         Html: {
+            //           Charset: "UTF-8",
+            //           Data: `<html><p>Welcome to Turing Test Chat! Turing Test Chat is free for everyone to use until (date), so it's time to start <a href="https://www.turingtestchat.com/home">chatting</a>. <br/>If you have any questions, check out the <a href="https://www.turingtestchat.com/faq">FAQ</a> or reply to this email.<br/> <a href={{amazonSESUnsubscribeUrl}}>Click here to unsubscribe</a></p></html>`
+            //         },
+            //         Text: {
+            //           Charset: "UTF-8",
+            //           Data: "Thank you for joining Turing Test Chat!\n\n If you have any questions, feel free to reply to this email.\n\n - TuringTestChat\n{{amazonSESUnsubscribeUrl}}"
+            //         }
+            //       },
+            //       Subject: {
+            //         Charset: "UTF-8",
+            //         Data: "Welcome to Turing Test Chat!"
+            //       }
+            //     }
+            //   },
+            //   ListManagementOptions: {
+            //     TopicName: "Account",
+            //     ContactListName: "TuringTestChat"
+            //   },
+            //   FeedbackForwardingEmailAddress: "support@turingtestchat.com",
+            //   FromEmailAddress: "ttc@turingtestchat.com",
+            //   ReplyToAddresses: [
+            //     "support@turingtestchat.com"
+            //   ]
+            // }));
+            // logger.info(`Message ID is ${result.MessageId}`);
+            logger.info(`Sent registration email to ${req.body.email}`);
+          } catch (err) {
+            logger.err(err);
+            return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+              message: "An unknown error occurred.",
+              succeeded: false,
+            });
           }
-        },
-        { upsert: true });
-      if (updateInfo?.upsertedCount! > 0) {
-
-        try {
-          // const result = await new SESv2Client({
-          //   credentials: {
-          //     accessKeyId: process.env.AWS_ACCESS_KEY!,
-          //     secretAccessKey: process.env.AWS_SECRET_KEY!,
-          //   },
-          //   apiVersion: "2019-09-27",
-          //   region: "us-east-1"
-          // }).send(new SendEmailCommand({
-          //   Destination: {
-          //     ToAddresses: [
-          //       req.body.email,
-          //     ]
-          //   },
-          //   Content: {
-          //     Simple: {
-          //       Body: {
-          //         Html: {
-          //           Charset: "UTF-8",
-          //           Data: "<html><p>Thank you for joining Turing Test Chat!<br/>If you have any questions, feel free to reply to this email.<br/> <a href={{amazonSESUnsubscribeUrl}}>Click here to unsubscribe</a></p></html>"
-          //         },
-          //         Text: {
-          //           Charset: "UTF-8",
-          //           Data: "Thank you for joining Turing Test Chat!\n\n If you have any questions, feel free to reply to this email.\n\n - TuringTestChat\n{{amazonSESUnsubscribeUrl}}"
-          //         }
-          //       },
-          //       Subject: {
-          //         Charset: "UTF-8",
-          //         Data: "Welcome to the Turing Test Chat!"
-          //       }
-          //     }
-          //   },
-          //   ListManagementOptions: {
-          //     TopicName: "Account",
-          //     ContactListName: "TuringTestChat"
-          //   },
-          //   FeedbackForwardingEmailAddress: "support@turingtestchat.com",
-          //   FromEmailAddress: "ttc@turingtestchat.com",
-          //   ReplyToAddresses: [
-          //     "support@turingtestchat.com"
-          //   ]
-          // }));
-          // logger.info(`Message ID is ${result.MessageId}`);
-          logger.info(`Sent registration email to ${req.body.email}`);
-        } catch (err) {
-          logger.err(err);
+          logger.info(`Successfully created account for user ${req.body.user}`);
+          return res.status(StatusCodes.OK).json({
+            message: "Account successfully created! Please log in.",
+            succeeded: true,
+          });
+        } else {
+          return res.status(StatusCodes.CONFLICT).json({
+            message: "Failed to create account.",
+            succeeded: false,
+          });
         }
-        logger.info(`Successfully created account for user ${req.body.user}`);
-        return res.status(StatusCodes.OK).json({
-          message: "Account successfully created! Please log in.",
-          succeeded: true,
-        });
       } else {
         return res.status(StatusCodes.CONFLICT).json({
-          message: "This username or email is already registered",
+          message: "This username or email is already registered.",
           succeeded: false,
         });
       }
     } catch (error) {
       logger.err(error);
       return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
-        message: "An unknown error occurred",
+        message: "An unknown error occurred.",
         succeeded: false,
       });
     }
   }
 
-  @Get("user")
+  @Get("user/:username")
   private async getUser(req: Request, res: Response) {
-    const user = await globalThis.collections.users?.findOne(
-      { username: req.body.username }
-    );
-    return user;
+    try {
+      const user = await globalThis.collections.users?.findOne(
+        { username: req.params.username }
+      );
+      if (user) {
+        return res.status(StatusCodes.OK).json({
+          username: user?.username!,
+          currentDailyCredits: user?.currentDailyCredits!,
+          permanentCredits: user?.permanentCredits!,
+          detection: user?.detection!,
+          deception: user?.deception!,
+          detectionWins: user?.detectionWins!,
+          detectionLosses: user?.detectionLosses!,
+          deceptionWins: user?.deceptionWins!,
+          deceptionLosses: user?.deceptionLosses!,
+          playFoundSound: user?.playFoundSound!
+        });
+      } else {
+        return res.status(StatusCodes.NOT_FOUND);
+      }
+    } catch (err) {
+      logger.err(`Failed to get user ${req.params.username}`);
+      logger.err(err);
+      return res.status(StatusCodes.INTERNAL_SERVER_ERROR);
+    }
   }
 
 }

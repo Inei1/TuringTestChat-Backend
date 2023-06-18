@@ -20,7 +20,7 @@ export const sendBotMessage = async (botUser: string,
     const temperatureRandom = Math.random() * 0.3 + 1.0;
     logger.info(`Temperature randomly set to ${temperatureRandom} in room ${id}`);
     completion = await openai.createChatCompletion({
-      model: "gpt-3.5-turbo",
+      model: "gpt-3.5-turbo-0613",
       messages: convertedMessages,
       max_tokens: 1024,
       // Set this randomly. Make it very rare to have extremely high temperature.
