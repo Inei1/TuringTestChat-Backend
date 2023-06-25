@@ -18,6 +18,7 @@ class AccountController {
         succeeded: false,
       });
     }
+    logger.info(req.body.email);
     const verification = await new Promise((resolve) => {
       quickemailverification.client(process.env.QEV_API_KEY).quickemailverification().verify(
         req.body.email, (err: any, response: any) => {
