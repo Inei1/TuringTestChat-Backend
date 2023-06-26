@@ -2,8 +2,8 @@ import { DefaultEventsMap } from "socket.io/dist/typed-events";
 import { Socket, Server as SocketServer } from 'socket.io';
 import logger from 'jet-logger';
 
-const CHAT_TIME = 10000;
-const RESULT_TIME = 10000;
+const CHAT_TIME = 150000;
+const RESULT_TIME = 30000;
 
 export const initiateChat = async (id: any, io: SocketServer<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,
   socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,

@@ -149,10 +149,12 @@ class AccountController {
   @Get("user/:username")
   private async getUser(req: Request, res: Response) {
     try {
+      logger.info("Attempting to get user on homepage");
       const user = await globalThis.collections.users?.findOne(
         { username: req.params.username }
       );
       if (user) {
+        logger.info(`User ${user?.username} accessed the home page`);
         return res.status(StatusCodes.OK).json({
           username: user?.username!,
           currentDailyCredits: user?.currentDailyCredits!,
@@ -166,6 +168,7 @@ class AccountController {
           playFoundSound: user?.playFoundSound!
         });
       } else {
+        logger.err(`Unknown user not found on going to homepage`);
         return res.status(StatusCodes.NOT_FOUND);
       }
     } catch (err) {
