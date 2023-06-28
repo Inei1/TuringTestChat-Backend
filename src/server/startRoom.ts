@@ -57,6 +57,7 @@ const createNewRoom = async (user: UserElements, emptyRooms: string[],
   if (botChat <= 75) {
     logger.info(`Queuing normally for room ${roomId}`);
     const user1Start = getRandomPercent() < 50;
+    const user1Goal = getRandomPercent() < 50 ? "Human" : "Bot";
     logger.info(`Is user1 starting? ${user1Start}`);
     logger.info(`username of user1 is ${user.username}`);
     try {
@@ -72,7 +73,7 @@ const createNewRoom = async (user: UserElements, emptyRooms: string[],
             result: null,
             ready: false,
             socketId: socket.id,
-            goal: getRandomPercent() < 50 ? "Human" : "Bot",
+            goal: user1Goal,
             canSend: user1Start,
             active: true,
             charactersPerSecond: getRandomCharactersPerSecond(),
@@ -84,7 +85,7 @@ const createNewRoom = async (user: UserElements, emptyRooms: string[],
             result: null,
             ready: false,
             socketId: "",
-            goal: getRandomPercent() < 50 ? "Human" : "Bot",
+            goal: user1Goal === "Human" ? "Bot" : (getRandomPercent() < 50 ? "Human" : "Bot"),
             canSend: !user1Start,
             active: true,
             charactersPerSecond: getRandomCharactersPerSecond(),
@@ -102,6 +103,8 @@ const createNewRoom = async (user: UserElements, emptyRooms: string[],
     logger.info("Creating and immediately filling a new room with a bot");
     const endTime = Date.now() + WAITING_MILLIS;
     const botStart = getRandomPercent() < 50;
+    const user2Goal = getRandomPercent() < 50 ? "Human" : "Bot";
+    const botGoal = user2Goal === "Bot" ? "Human" : (getRandomPercent() < 50 ? "Human" : "Bot")
     logger.info(`End time is ${endTime} for ${roomId}`);
     logger.info(`Is bot starting? ${botStart}`);
     logger.info(`username of user1 is ${user.username}`);
@@ -112,7 +115,7 @@ const createNewRoom = async (user: UserElements, emptyRooms: string[],
         id: roomId,
         messages: [{
           name: "System",
-          message: generateSystemMessage()
+          message: generateSystemMessage(botGoal),
         }],
         user1: {
           name: "user1",
@@ -120,7 +123,7 @@ const createNewRoom = async (user: UserElements, emptyRooms: string[],
           result: null,
           ready: false,
           socketId: "",
-          goal: getRandomPercent() < 50 ? "Human" : "Bot",
+          goal: botGoal,
           canSend: botStart,
           active: true,
           charactersPerSecond: getRandomCharactersPerSecond(),
@@ -132,7 +135,7 @@ const createNewRoom = async (user: UserElements, emptyRooms: string[],
           result: null,
           ready: false,
           socketId: socket.id,
-          goal: getRandomPercent() < 50 ? "Human" : "Bot",
+          goal: user2Goal,
           canSend: !botStart,
           active: true,
           charactersPerSecond: getRandomCharactersPerSecond(),
@@ -235,7 +238,7 @@ const joinRoom = async (user: UserElements, emptyRooms: string[],
             result: null,
             ready: false,
             socketId: socket.id,
-            goal: getRandomPercent() < 50 ? "Human" : "Bot",
+            goal: room?.user1.goal === "Bot" ? "Human" : getRandomPercent() < 50 ? "Human" : "Bot",
             canSend: room?.user2.canSend!,
             active: true,
             charactersPerSecond: getRandomCharactersPerSecond(),
@@ -302,7 +305,7 @@ const joinRoom = async (user: UserElements, emptyRooms: string[],
         logger.err("User somehow has no credits?");
       }
     } catch (err) {
-      logger.err("Failed to remove a credit from both usera");
+      logger.err("Failed to remove a credit from both users");
       logger.err(err);
     }
     setTimeout(async () => {
@@ -342,7 +345,7 @@ const joinRoom = async (user: UserElements, emptyRooms: string[],
             result: null,
             ready: false,
             socketId: "",
-            goal: getRandomPercent() < 50 ? "Human" : "Bot",
+            goal: room?.user1.goal === "Bot" ? "Human" : (getRandomPercent() < 50 ? "Human" : "Bot"),
             canSend: room?.user2.canSend!,
             active: true,
             charactersPerSecond: getRandomCharactersPerSecond(),
@@ -350,7 +353,7 @@ const joinRoom = async (user: UserElements, emptyRooms: string[],
           },
           messages: [{
             name: "System",
-            message: generateSystemMessage()
+            message: generateSystemMessage(room?.user1.goal === "Human" ? "Bot" : "Human")
           }]
         }
       }

@@ -6,6 +6,8 @@ import { ChatSession } from "src/types";
 import { randomUUID } from "crypto";
 import logger from "jet-logger";
 import { getRandomTypingDelay } from "./getRandomTypingDelay";
+import { clearInterval, setInterval } from "timers";
+import { getRandomPercent } from "./getRandomPercent";
 
 export const sendBotMessage = async (botUser: string,
   io: SocketServer<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,
@@ -42,6 +44,16 @@ export const sendBotMessage = async (botUser: string,
         io.to(room.id).emit("typingResponse", "Chatter");
       }
     }, randomTypingDelay);
+    let timeout: NodeJS.Timeout | null = null;
+    const interval = setInterval(() => {
+      const pauseTyping = getRandomPercent();
+      if (pauseTyping <= 2.5) {
+        const typingDelay = 300 + (4700 + 1 - 300) * Math.pow(Math.random(), 0.25);
+        console.log("typingDelay " + typingDelay);
+        io.to(room.id).emit("typingResponse", "")
+        timeout = setTimeout(() => io.to(room.id).emit("typingResponse", "Chatter"), typingDelay);
+      }
+    }, 1000);
     setTimeout(async () => {
       logger.info(`Emitting message in room ${id}`);
       if (room.endChatTime > Date.now()) {
@@ -61,7 +73,12 @@ export const sendBotMessage = async (botUser: string,
       }
       io.to(room?.id!).emit("typingResponse", "");
       logger.info(`Bot message successfully sent in room ${id}`);
+      clearInterval(interval);
+      if (timeout) {
+        clearTimeout(timeout);
+      }
     }, messageDelay);
+    
     logger.info(`Bot message successfully scheduled in room ${id}`);
   } catch (error) {
     logger.err(error);
