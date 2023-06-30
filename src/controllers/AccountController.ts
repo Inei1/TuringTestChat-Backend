@@ -55,7 +55,7 @@ class AccountController {
               email: req.body.email,
               username: req.body.username,
               password: hashedPassword,
-              currentDailyCredits: 20,
+              currentDailyCredits: 9999, //20,
               maximumDailyCredits: 20,
               permanentCredits: 0,
               deception: 0,
