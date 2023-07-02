@@ -116,10 +116,10 @@ class ChatServer extends Server {
   public startHttp(): void {
     const httpServer = http.createServer(this.app);
     const io = new SocketServer(httpServer, {
-      cors: {
-        origin: "https://www.turingtestchat.com",
-        methods: ["GET", "POST"],
-      }
+      // cors: {
+      //   origin: "https://www.turingtestchat.com",
+      //   methods: ["GET", "POST"],
+      // }
     });
 
     const wrap = (middleware: any) => (socket: any, next: any) => middleware(socket.request, {}, next);
