@@ -21,7 +21,6 @@ import { message } from './message';
 import { startRoom } from './startRoom';
 import { getRoomId } from './getRoomId';
 import SettingsController from '../controllers/SettingsController';
-import cors from "cors";
 
 const LocalStrategy = passportLocal.Strategy;
 
@@ -53,7 +52,6 @@ class ChatServer extends Server {
 
   constructor() {
     super(true);
-    this.app.use(cors());
     this.app.use(bodyParser.urlencoded({ extended: true }));
     this.app.use(bodyParser.json());
     this.app.use(this.sessionMiddleware);
@@ -125,7 +123,7 @@ class ChatServer extends Server {
     const httpServer = http.createServer(this.app);
     const io = new SocketServer(httpServer, {
       cors: {
-        origin: "http://localhost:3000",
+        origin: "https://www.turingtestchat.com",
         methods: ["GET", "POST"],
       }
     });
