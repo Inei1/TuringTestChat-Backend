@@ -41,8 +41,8 @@ class ChatServer extends Server {
     cookie: {
       maxAge: 60 * 60 * 24 * 1000,
       httpOnly: false,
-      sameSite: "lax",// process.env.NODE_ENV === "production" ? "none" : "lax",
-      secure: false,// process.env.NODE_ENV === "production" ? true : "auto",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      secure: process.env.NODE_ENV === "production" ? true : "auto",
     } // 24 hours
   });
 
