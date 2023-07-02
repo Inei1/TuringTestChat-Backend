@@ -5,7 +5,7 @@ import passport = require("passport");
 import logger from "jet-logger";
 
 @Controller('login')
-class ChatController {
+class LoginController {
 
   @Post("password")
   @Middleware(passport.authenticate("local", { session: true }))
@@ -26,4 +26,4 @@ class ChatController {
 
 }
 
-export default ChatController;
+export default LoginController;

@@ -2,7 +2,6 @@ import * as bodyParser from 'body-parser';
 import { Server } from '@overnightjs/core';
 import { Server as SocketServer } from 'socket.io';
 import logger from 'jet-logger';
-var https = require('https');
 var http = require('http');
 import { readFileSync } from 'fs';
 import { Configuration, OpenAIApi } from 'openai';
@@ -21,6 +20,7 @@ import { message } from './message';
 import { startRoom } from './startRoom';
 import { getRoomId } from './getRoomId';
 import SettingsController from '../controllers/SettingsController';
+import cors from "cors";
 
 const LocalStrategy = passportLocal.Strategy;
 
@@ -52,9 +52,11 @@ class ChatServer extends Server {
 
   constructor() {
     super(true);
+    this.app.use(cors());
     this.app.use(bodyParser.urlencoded({ extended: true }));
     this.app.use(bodyParser.json());
     this.app.use(this.sessionMiddleware);
+  
     connectToDatabase().then((collections) => globalThis.collections = collections);
     passport.serializeUser((user: any, done) => {
       logger.info(`Serializing user ${user.username}`);
@@ -113,12 +115,6 @@ class ChatServer extends Server {
     cert: readFileSync("certificate.pem", { encoding: "utf8" }),
   }
 
-  public startHttps(port: number): void {
-    const httpsServer = https.createServer(this.app).listen(port, () => {
-      logger.imp("Started https server on port " + port);
-    });
-  }
-
   public startHttp(port: number): void {
     const httpServer = http.createServer(this.app);
     const io = new SocketServer(httpServer, {
@@ -163,6 +159,7 @@ class ChatServer extends Server {
         if (room && room.endChatTime >= Date.now()) {
           // Remove points from leaving user, add points to otherLeft user
           socket.to(id).emit("otherLeft");
+      
           if (room?.user1.socketId === socket.id) {
             logger.info(`Marking user ${room?.user1.username} as early leaver`);
             await globalThis.collections.chatSessions?.updateOne(
@@ -243,6 +240,7 @@ class ChatServer extends Server {
         } else if (room && room!.endResultTime >= Date.now()) {
           // Did not pick, add points to user who gets otherResult
           socket.to(id).emit("otherResult", {
+          
             result: "Did not pick",
             points: 10,
           });
