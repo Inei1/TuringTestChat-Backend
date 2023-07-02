@@ -15,15 +15,14 @@ export const sendBotMessage = async (botUser: string,
   logger.info(`Attempting to send bot message in room ${id}`);
   logger.info(`Converting messages to a format readable by ChatGPT in room ${id}`);
   const convertedMessages = convertMessages(botUser, room.messages);
-  console.log(convertedMessages);
   logger.info(`Successfully converted messages in room ${id}`);
   let completion: any;
-  //try {
+  try {
     logger.info(`Creating chat completion for ChatGPT in room ${id}`);
     const temperatureRandom = Math.random() * 0.3 + 1.0;
     logger.info(`Temperature randomly set to ${temperatureRandom} in room ${id}`);
     completion = await openai.createChatCompletion({
-      model: "gpt-3.5-turbo-0613",
+      model: "gpt-3.5-turbo",
       messages: convertedMessages,
       max_tokens: 1024,
       // Set this randomly. Make it very rare to have extremely high temperature.
@@ -79,13 +78,13 @@ export const sendBotMessage = async (botUser: string,
         clearTimeout(timeout);
       }
     }, messageDelay);
-    
+
     logger.info(`Bot message successfully scheduled in room ${id}`);
-  // } catch (error) {
-  //   logger.err(error);
-  //   // Remove add points to otherLeft user
-  //   io.to(room?.id).emit("otherLeft");
-  // }
+  } catch (error) {
+    logger.err(error);
+    // Remove add points to otherLeft user
+    io.to(room?.id).emit("otherLeft");
+  }
 }
 
 const convertMessages = (botUser: string, messages: UserMessage[]) => {
