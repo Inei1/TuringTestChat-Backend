@@ -15,6 +15,7 @@ export const sendBotMessage = async (botUser: string,
   logger.info(`Attempting to send bot message in room ${id}`);
   logger.info(`Converting messages to a format readable by ChatGPT in room ${id}`);
   const convertedMessages = convertMessages(botUser, room.messages);
+  console.log(convertedMessages);
   logger.info(`Successfully converted messages in room ${id}`);
   let completion: any;
   try {
