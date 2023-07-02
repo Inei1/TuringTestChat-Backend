@@ -80,12 +80,13 @@ class ChatServer extends Server {
     passport.use(new LocalStrategy({ usernameField: "username", passwordField: "password" }, (username, password, done) => {
       try {
         logger.info(`Authenticating user ${username} using local strategy`);
-        globalThis.collections.users?.findOne({ username: username.toLowerCase() }).then((user) => {
+        globalThis.collections.users?.findOne({ username: username }).then((user) => {
           if (!user) {
             return done(undefined, false, { message: `User ${username} not found` });
           }
           bcrypt.compare(password, user.password).then((valid) => {
             if (valid) {
+              logger.info(`User ${username} authenticated`);
               return done(undefined, user);
             } else {
               return done(undefined, false, { message: "Invalid username or password" });
