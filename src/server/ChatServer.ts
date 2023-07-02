@@ -115,7 +115,7 @@ class ChatServer extends Server {
     cert: readFileSync("certificate.pem", { encoding: "utf8" }),
   }
 
-  public startHttp(port: number): void {
+  public startHttp(): void {
     const httpServer = http.createServer(this.app);
     const io = new SocketServer(httpServer, {
       cors: {
@@ -382,8 +382,8 @@ class ChatServer extends Server {
       });
     });
 
-    httpServer.listen(port, () => {
-      logger.imp("Started http server on port " + port);
+    httpServer.listen(process.env.PORT, () => {
+      logger.imp("Started http server on port " + process.env.PORT);
     });
   }
 }
