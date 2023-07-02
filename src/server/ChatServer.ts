@@ -130,7 +130,8 @@ class ChatServer extends Server {
       if (socket.request.user) {
         next();
       } else {
-        next(new Error('unauthorized test123'))
+        next();
+        //next(new Error("Socket connection unauthorized."));
       }
     });
 
