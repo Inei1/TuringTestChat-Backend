@@ -20,7 +20,6 @@ import { message } from './message';
 import { startRoom } from './startRoom';
 import { getRoomId } from './getRoomId';
 import SettingsController from '../controllers/SettingsController';
-import cors from "cors";
 
 const LocalStrategy = passportLocal.Strategy;
 
@@ -52,7 +51,6 @@ class ChatServer extends Server {
 
   constructor() {
     super(true);
-    this.app.use(cors());
     this.app.use(bodyParser.urlencoded({ extended: true }));
     this.app.use(bodyParser.json());
     this.app.use(this.sessionMiddleware);
