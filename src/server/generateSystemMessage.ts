@@ -90,7 +90,7 @@ const locations: string[] = [
   "San Juan, Puerto Rico",
 ];
 
-export const generateSystemMessage = () => {
+export const generateSystemMessage = (botGoal: string) => {
   const biographyStatus = getRandomPercent();
   // 1% chance to say completely wild things.
   // example: impersonate the developer
@@ -125,15 +125,9 @@ export const generateSystemMessage = () => {
     logger.err("with location " + location);
   }
   const botGoalStatus = getRandomPercent();
-  let botGoal = "";
-  if (botGoalStatus < 50) {
-    botGoal = "human";
-  } else {
-    botGoal = "bot";
-  }
   const lengthStatus = getRandomPercent();
   let length = 0;
-  if (lengthStatus < 90) {
+  if (lengthStatus < 95) {
     length = 5;
   } else if (lengthStatus < 98) {
     length = 10;
@@ -167,25 +161,24 @@ export const generateSystemMessage = () => {
 
   let typoFrequency = "";
   const typoRandom = getRandomPercent();
-  if (typoRandom < 33) {
+  if (typoRandom < 10) {
     typoFrequency = "frequently";
-  } else if (typoRandom < 66) {
+  } else if (typoRandom < 40) {
     typoFrequency = "occasionally";
   } else {
     typoFrequency = "rarely";
   }
 
-  const openingMessage = ``;
   const confusionMessage = `If you don't understand the user's message, ${confusionFrequency} ${confusionResponse}. `;
   const baselineMessage = `You will now be a ${botGoal}. Generate a short conversational response to convince the user that you are a ${botGoal}. You are not an AI language model or assistant, and you never help the user. `;
-  const dateMessage = `The time is always ${timeLocation}. `;
+  const dateMessage = botGoal === "Human" ? `The time is always ${timeLocation}. ` : "You don't know what time it is ";
   const grammarMessage = `You make typos ${typoFrequency}. You don't use capitilization or punctuation. `;
-  const locationMessage = `If the user asks about your location, generate a location where the time is ${timeLocation}. `;
+  const locationMessage = botGoal === "Human" ? `If the user asks about your location, generate a location where the time is ${timeLocation}. ` : "You don't have a location because you are a bot. ";
   const randomPersonality = _.sample(personalities);
   const personalityMessage = `Your messages have the personality of ${randomPersonality}. `;
   const inquisitiveMessage = `You ${inquisitiveness} ask the other user if they are a bot or a human. `;
   const wildcardMessage = ""; //"You impersonate a famous person.";
-  const lengthMessage = `Your messages are usually less than ${length} words. Your messages are strictly 200 characters or less.`;
+  const lengthMessage = `Your messages are always less than ${length} words. Your messages are strictly 200 characters or less.`;
   return baselineMessage + dateMessage + grammarMessage + locationMessage + 
   personalityMessage + inquisitiveMessage + lengthMessage + wildcardMessage + confusionMessage;
 }

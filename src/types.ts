@@ -4,8 +4,7 @@ export interface AuthToken {
 }
 
 export interface UserElements {
-  user: string;
-  profileImage: string;
+  username: string;
   password: string;
   email: string;
   detection: number;
@@ -15,6 +14,11 @@ export interface UserElements {
   deceptionWins: number;
   deceptionLosses: number;
   tokens: AuthToken[];
+  playFoundSound: boolean;
+  currentDailyCredits: number;
+  maximumDailyCredits: number;
+  permanentCredits: number;
+  creationTime: number;
 }
 
 export interface WaitlistElements {
@@ -31,6 +35,7 @@ export interface ChatUser {
   socketId: string;
   goal: "Human" | "Bot";
   name: string;
+  username: string;
   bot: boolean;
   result: string | null;
   ready: boolean;

@@ -9,13 +9,13 @@ import logger from 'jet-logger';
 export const readyChat = async (data: any, io: SocketServer<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,
   socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,
   openai: OpenAIApi) => {
-  logger.info(`Attempting to mark ${data.user} as ready`);
+  logger.info(`Attempting to mark ${data.username} as ready`);
   const id = getRoomId(socket);
   const room = await globalThis.collections.chatSessions?.findOne(
     { id: id }
   );
-  logger.info(`Found room ${id} for ${data.user}`);
-  if (room?.user1.name === data.user) {
+  logger.info(`Found room ${id} for ${data.username}`);
+  if (room?.user1.username === data.username) {
     logger.info(`Marking user1 as ready for room ${id}`);
     const otherReady = room!.user2.ready;
     const canSend = room?.user1.canSend!;
@@ -32,7 +32,8 @@ export const readyChat = async (data: any, io: SocketServer<DefaultEventsMap, De
             goal: room!.user1.goal,
             canSend: canSend,
             active: true,
-            charactersPerSecond: room?.user1.charactersPerSecond!
+            charactersPerSecond: room?.user1.charactersPerSecond!,
+            username: room?.user1.username!,
           }
         }
       }
@@ -51,7 +52,7 @@ export const readyChat = async (data: any, io: SocketServer<DefaultEventsMap, De
     } else {
       logger.info(`User2 in room ${id} is not ready yet`);
     }
-  } else if (room?.user2?.name === data.user) {
+  } else if (room?.user2?.username === data.username) {
     logger.info(`Marking user2 as ready for room ${id}`);
     const otherReady = room!.user1.ready;
     const canSend = room?.user2.canSend!;
@@ -68,7 +69,8 @@ export const readyChat = async (data: any, io: SocketServer<DefaultEventsMap, De
             goal: room!.user2.goal,
             canSend: canSend,
             active: true,
-            charactersPerSecond: room?.user2.charactersPerSecond!
+            charactersPerSecond: room?.user2.charactersPerSecond!,
+            username: room?.user2.username!,
           }
         }
       }

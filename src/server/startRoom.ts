@@ -10,6 +10,7 @@ import { initiateChat } from "./initiateChat";
 import { sendBotMessage } from "./sendBotMessage";
 import { OpenAIApi } from "openai";
 import { getRandomCharactersPerSecond } from "./getRandomCharactersPerSecond";
+import { UserElements } from "src/types";
 
 const WAITING_MILLIS = 30000;
 
@@ -19,21 +20,33 @@ const WAITING_MILLIS = 30000;
 // Because of this, we need to have the chance of queueing into a bot instead of a player when finding
 // a game to be 33%. The probability of queueing into a bot is 1/4 + (3/4 * 1/3) = 50%.
 // The probability of queueing into a human is (3/4 * 2/3) = 50%.
-export const startRoom = async (emptyRooms: string[],
+export const startRoom = async (data: any, emptyRooms: string[],
   socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,
   io: SocketServer<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,
   openai: OpenAIApi) => {
-  logger.info("Attempting to start new room");
-  if (emptyRooms.length > 0) {
-    logger.info("New room found, attempting to join");
-    await joinRoom(emptyRooms, socket, io, openai);
-  } else {
-    logger.info("No new rooms found, creating a new one");
-    await createNewRoom(emptyRooms, socket, io, openai);
+  try {
+    const user = await globalThis.collections.users?.findOne(
+      { username: data.username },
+    );
+    if (user && user.currentDailyCredits <= 0 && user.permanentCredits <= 0) {
+      logger.info("User attempted to join game with no credits remaining");
+    } else {
+      logger.info("Attempting to start new room");
+      if (emptyRooms.length > 0) {
+        logger.info("New room found, attempting to join");
+        await joinRoom(user!, emptyRooms, socket, io, openai);
+      } else {
+        logger.info("No new rooms found, creating a new one");
+        await createNewRoom(user!, emptyRooms, socket, io, openai);
+      }
+    }
+  } catch (err) {
+    logger.err("An unknown error occurred when attempting to start room.");
+    logger.err(err);
   }
 }
 
-const createNewRoom = async (emptyRooms: string[],
+const createNewRoom = async (user: UserElements, emptyRooms: string[],
   socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,
   io: SocketServer<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,
   openai: OpenAIApi) => {
@@ -44,7 +57,9 @@ const createNewRoom = async (emptyRooms: string[],
   if (botChat <= 75) {
     logger.info(`Queuing normally for room ${roomId}`);
     const user1Start = getRandomPercent() < 50;
+    const user1Goal = getRandomPercent() < 50 ? "Human" : "Bot";
     logger.info(`Is user1 starting? ${user1Start}`);
+    logger.info(`username of user1 is ${user.username}`);
     try {
       await globalThis.collections.chatSessions?.insertOne(
         {
@@ -58,10 +73,11 @@ const createNewRoom = async (emptyRooms: string[],
             result: null,
             ready: false,
             socketId: socket.id,
-            goal: getRandomPercent() < 50 ? "Human" : "Bot",
+            goal: user1Goal,
             canSend: user1Start,
             active: true,
-            charactersPerSecond: getRandomCharactersPerSecond()
+            charactersPerSecond: getRandomCharactersPerSecond(),
+            username: user.username,
           },
           user2: {
             name: "user2",
@@ -69,10 +85,11 @@ const createNewRoom = async (emptyRooms: string[],
             result: null,
             ready: false,
             socketId: "",
-            goal: getRandomPercent() < 50 ? "Human" : "Bot",
+            goal: user1Goal === "Human" ? "Bot" : (getRandomPercent() < 50 ? "Human" : "Bot"),
             canSend: !user1Start,
             active: true,
-            charactersPerSecond: getRandomCharactersPerSecond()
+            charactersPerSecond: getRandomCharactersPerSecond(),
+            username: "",
           }
         });
     } catch (error) {
@@ -86,7 +103,11 @@ const createNewRoom = async (emptyRooms: string[],
     logger.info("Creating and immediately filling a new room with a bot");
     const endTime = Date.now() + WAITING_MILLIS;
     const botStart = getRandomPercent() < 50;
+    const user2Goal = getRandomPercent() < 50 ? "Human" : "Bot";
+    const botGoal = user2Goal === "Bot" ? "Human" : (getRandomPercent() < 50 ? "Human" : "Bot")
     logger.info(`End time is ${endTime} for ${roomId}`);
+    logger.info(`Is bot starting? ${botStart}`);
+    logger.info(`username of user1 is ${user.username}`);
     try {
       await globalThis.collections.chatSessions?.insertOne({
         endChatTime: -1,
@@ -94,7 +115,7 @@ const createNewRoom = async (emptyRooms: string[],
         id: roomId,
         messages: [{
           name: "System",
-          message: generateSystemMessage()
+          message: generateSystemMessage(botGoal),
         }],
         user1: {
           name: "user1",
@@ -102,10 +123,11 @@ const createNewRoom = async (emptyRooms: string[],
           result: null,
           ready: false,
           socketId: "",
-          goal: getRandomPercent() < 50 ? "Human" : "Bot",
+          goal: botGoal,
           canSend: botStart,
           active: true,
-          charactersPerSecond: getRandomCharactersPerSecond()
+          charactersPerSecond: getRandomCharactersPerSecond(),
+          username: "",
         },
         user2: {
           name: "user2",
@@ -113,10 +135,11 @@ const createNewRoom = async (emptyRooms: string[],
           result: null,
           ready: false,
           socketId: socket.id,
-          goal: getRandomPercent() < 50 ? "Human" : "Bot",
+          goal: user2Goal,
           canSend: !botStart,
           active: true,
-          charactersPerSecond: getRandomCharactersPerSecond()
+          charactersPerSecond: getRandomCharactersPerSecond(),
+          username: user.username,
         }
       });
     } catch (error) {
@@ -124,6 +147,34 @@ const createNewRoom = async (emptyRooms: string[],
     }
     socket.join(roomId);
     socket.emit("foundChat", { endTime: endTime, name: "user2" });
+    try {
+      if (user.currentDailyCredits > 0) {
+        await globalThis.collections.users?.updateOne(
+          { username: user.username },
+          {
+            $set: {
+              currentDailyCredits: user?.currentDailyCredits! - 1
+            }
+          }
+        );
+        logger.info(`Removed one daily credit from ${user?.username}`);
+      } else if (user.permanentCredits > 0) {
+        await globalThis.collections.users?.updateOne(
+          { username: user.username },
+          {
+            $set: {
+              permanentCredits: user?.permanentCredits! - 1
+            }
+          }
+        );
+        logger.info(`Removed one permanent credit from ${user?.username}`);
+      } else {
+        logger.err("User somehow has no credits?");
+      }
+    } catch (err) {
+      logger.err("Failed to remove a credit from the joining user");
+      logger.err(err);
+    }
     logger.info(`User instantly joined game with bot ${roomId}`);
     setTimeout(async () => {
       // user1 is always bot
@@ -156,7 +207,7 @@ const createNewRoom = async (emptyRooms: string[],
         // remove points from user2
         logger.info(`User2 is ready in room ${roomId}`);
         io.to(roomId).emit("readyExpired");
-        io.socketsLeave(roomId);
+        io.in(roomId).disconnectSockets();
       } else {
         logger.info(`User2 is not ready in room ${roomId}`);
       }
@@ -164,7 +215,7 @@ const createNewRoom = async (emptyRooms: string[],
   }
 }
 
-const joinRoom = async (emptyRooms: string[],
+const joinRoom = async (user: UserElements, emptyRooms: string[],
   socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,
   io: SocketServer<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,
   openai: OpenAIApi) => {
@@ -172,6 +223,7 @@ const joinRoom = async (emptyRooms: string[],
   // 66% chance to queue into a human like normal.
   if (botChat <= 66) {
     logger.info("New room is queuing like normal");
+    logger.info(`Username of joining user is ${user.username}`);
     const roomId = emptyRooms.pop()!
     const room = await globalThis.collections.chatSessions?.findOne(
       { id: roomId }
@@ -186,10 +238,11 @@ const joinRoom = async (emptyRooms: string[],
             result: null,
             ready: false,
             socketId: socket.id,
-            goal: getRandomPercent() < 50 ? "Human" : "Bot",
+            goal: room?.user1.goal === "Bot" ? "Human" : getRandomPercent() < 50 ? "Human" : "Bot",
             canSend: room?.user2.canSend!,
             active: true,
-            charactersPerSecond: getRandomCharactersPerSecond()
+            charactersPerSecond: getRandomCharactersPerSecond(),
+            username: user.username
           }
         }
       }
@@ -201,6 +254,60 @@ const joinRoom = async (emptyRooms: string[],
     logger.info(`End waiting time for ${roomId} is ${endTime}`);
     socket.broadcast.to(roomId).emit("foundChat", { endTime: endTime, name: "user1" });
     socket.emit("foundChat", { endTime: endTime, name: "user2" });
+    try {
+      const otherUser = await globalThis.collections.users?.findOne(
+        {username: room?.user1.username}
+      );
+      if (user.currentDailyCredits > 0) {
+        await globalThis.collections.users?.updateOne(
+          { username: user.username },
+          {
+            $set: {
+              currentDailyCredits: user?.currentDailyCredits! - 1
+            }
+          }
+        );
+        logger.info(`Removed one daily credit from ${user?.username}`);
+      } else if (user.permanentCredits > 0) {
+        await globalThis.collections.users?.updateOne(
+          { username: user.username },
+          {
+            $set: {
+              permanentCredits: user?.permanentCredits! - 1
+            }
+          }
+        );
+        logger.info(`Removed one permanent credit from ${user?.username}`);
+      } else {
+        logger.err("User somehow has no credits?");
+      }
+      if (otherUser?.currentDailyCredits! > 0) {
+        await globalThis.collections.users?.updateOne(
+          { username: otherUser?.username },
+          {
+            $set: {
+              currentDailyCredits: otherUser?.currentDailyCredits! - 1
+            }
+          }
+        );
+        logger.info(`Removed one daily credit from ${user?.username}`);
+      } else if (otherUser?.permanentCredits! > 0) {
+        await globalThis.collections.users?.updateOne(
+          { username: otherUser?.username },
+          {
+            $set: {
+              permanentCredits: otherUser?.permanentCredits! - 1
+            }
+          }
+        );
+        logger.info(`Removed one permanent credit from ${otherUser?.username}`);
+      } else {
+        logger.err("User somehow has no credits?");
+      }
+    } catch (err) {
+      logger.err("Failed to remove a credit from both users");
+      logger.err(err);
+    }
     setTimeout(async () => {
       logger.info(`Checking that both users accepted in room ${roomId}`);
       const room = await globalThis.collections.chatSessions?.findOne(
@@ -210,13 +317,13 @@ const joinRoom = async (emptyRooms: string[],
         // remove points from user1
         logger.info(`User1 did not accept in ${roomId}`);
         io.to(roomId).emit("readyExpired");
-        io.socketsLeave(roomId);
+        io.in(roomId).disconnectSockets();
       }
       if (!room?.user2.ready) {
         // remove points from user2
         logger.info(`User2 did not accept in ${roomId}`);
         io.to(roomId).emit("readyExpired");
-        io.socketsLeave(roomId);
+        io.in(roomId).disconnectSockets();
       }
     }, WAITING_MILLIS);
     logger.info(`Successfully sent room found message for room ${roomId}`);
@@ -238,20 +345,51 @@ const joinRoom = async (emptyRooms: string[],
             result: null,
             ready: false,
             socketId: "",
-            goal: getRandomPercent() < 50 ? "Human" : "Bot",
+            goal: room?.user1.goal === "Bot" ? "Human" : (getRandomPercent() < 50 ? "Human" : "Bot"),
             canSend: room?.user2.canSend!,
             active: true,
-            charactersPerSecond: getRandomCharactersPerSecond()
+            charactersPerSecond: getRandomCharactersPerSecond(),
+            username: "",
           },
           messages: [{
             name: "System",
-            message: generateSystemMessage()
+            message: generateSystemMessage(room?.user1.goal === "Human" ? "Bot" : "Human")
           }]
         }
       }
     );
     logger.info(`Created chat session for room ${roomId}`);
     io.to(roomId).emit("foundChat", { endTime: endTime, name: "user1" });
+    try {
+      const user = await globalThis.collections.users?.findOne(
+        {username: room?.user1.username}
+      );
+      if (user?.currentDailyCredits! > 0) {
+        await globalThis.collections.users?.updateOne(
+          { username: user?.username },
+          {
+            $set: {
+              currentDailyCredits: user?.currentDailyCredits! - 1
+            }
+          }
+        );
+      } else if (user?.permanentCredits! > 0) {
+        await globalThis.collections.users?.updateOne(
+          { username: user?.username },
+          {
+            $set: {
+              permanentCredits: user?.permanentCredits! - 1
+            }
+          }
+        );
+      } else {
+        logger.err("User somehow has no credits?");
+      }
+      logger.info(`Removed one credit from ${user?.username}`);
+    } catch (err) {
+      logger.err("Failed to remove a credit from the joining user");
+      logger.err(err);
+    }
     logger.info(`Joined into bot in ${roomId}`);
     const joinTime = getRandomJoinTime();
     logger.info(`Bot will join in ${joinTime} millis for room ${roomId}`);
@@ -286,12 +424,12 @@ const joinRoom = async (emptyRooms: string[],
         // remove points from user1
         logger.info(`User in room ${roomId} is not ready`);
         io.to(roomId).emit("readyExpired");
-        io.socketsLeave(roomId);
+        io.in(roomId).disconnectSockets();
       }
     }, WAITING_MILLIS);
 
     logger.info(`Creating a new room for the user who would have joined this room`);
     // create a new room for the new user
-    await createNewRoom(emptyRooms, socket, io, openai);
+    await createNewRoom(user, emptyRooms, socket, io, openai);
   }
 }

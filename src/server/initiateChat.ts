@@ -42,50 +42,64 @@ export const initiateChat = async (id: any, io: SocketServer<DefaultEventsMap, D
       name: otherName
     });
   }
-  setTimeout(() => {
-    logger.info("Ending chat " + id);
-    io.to(id).emit("endChat");
-    io.to(id).emit("typingResponse", "");
+  setTimeout(async () => {
+    const room = await globalThis.collections.chatSessions?.findOne(
+      { id: id }
+    );
+    if (room) {
+      logger.info("Ending chat " + id);
+      io.to(id).emit("endChat");
+      io.to(id).emit("typingResponse", "");
+    } else {
+      logger.info("room " + id + " already deleted, no chat to end");
+    }
+
   }, CHAT_TIME);
   setTimeout(async () => {
     logger.info("Checking if both users in chat " + id + " selected");
     const newRoom = await globalThis.collections.chatSessions?.findOne(
       { id: id }
     );
-    if (newRoom?.user1.result === "" && newRoom?.user1.active) {
-      logger.info("User1 in chat " + id + " did not select");
-      io.to(newRoom?.user2.socketId).emit("noResult", { otherGoal: newRoom.user1.goal });
-      io.to(newRoom?.user1.socketId).emit("selfResult", {
-        points: -3,
-        other: newRoom?.user2.bot ? "Bot" : "Human",
-        result: "",
-      });
+    if (newRoom) {
+      logger.info("Room " + id + " is calculating result");
+      if (newRoom?.user1.result === "" && newRoom?.user1.active) {
+        logger.info("User1 in chat " + id + " did not select");
+        io.to(newRoom?.user2.socketId).emit("noResult", { otherGoal: newRoom.user1.goal });
+        io.to(newRoom?.user1.socketId).emit("selfResult", {
+          points: -3,
+          other: newRoom?.user2.bot ? "Bot" : "Human",
+          result: "",
+        });
+      } else {
+        logger.info("User1 in chat " + id + " selected " + newRoom?.user1.result);
+        io.to(newRoom!.user2.socketId).emit("completeChat");
+      }
+      if (newRoom?.user2.result === "" && newRoom?.user2.active) {
+        logger.info("User2 in chat " + id + " did not select");
+        io.to(newRoom?.user1.socketId).emit("noResult", { otherGoal: newRoom.user2.goal });
+        io.to(newRoom?.user2.socketId).emit("selfResult", {
+          points: -3,
+          other: newRoom?.user1.bot ? "Bot" : "Human",
+          result: "",
+        });
+      } else {
+        logger.info("User2 in chat " + id + " selected " + newRoom?.user2.result);
+        io.to(newRoom!.user1.socketId).emit("completeChat");
+      }
     } else {
-      logger.info("User1 in chat " + id + " selected " + newRoom?.user1.result);
-      io.to(newRoom!.user2.socketId).emit("completeChat");
-    }
-    if (newRoom?.user2.result === "" && newRoom?.user2.active) {
-      logger.info("User2 in chat " + id + " did not select");
-      io.to(newRoom?.user1.socketId).emit("noResult", { otherGoal: newRoom.user2.goal });
-      io.to(newRoom?.user2.socketId).emit("selfResult", {
-        points: -3,
-        other: newRoom?.user1.bot ? "Bot" : "Human",
-        result: "",
-      });
-    } else {
-      logger.info("User2 in chat " + id + " selected " + newRoom?.user2.result);
-      io.to(newRoom!.user1.socketId).emit("completeChat");
+      logger.info("Room " + id + " was already deleted.");
     }
   }, CHAT_TIME + RESULT_TIME);
   setTimeout(async () => {
-    logger.info("Moving chat session " + id + " to past chat sessions");
-    io.socketsLeave(id);
-    const newRoom = await globalThis.collections.chatSessions?.findOne(
+    const room = await globalThis.collections.chatSessions?.findOne(
       { id: id }
     );
-    await globalThis.collections.pastChatSessions?.insertOne(newRoom!);
-    await globalThis.collections.chatSessions?.deleteOne(newRoom!);
-    logger.info("Successfully moved chat session " + id + " to past chat sessions");
+    if (room) {
+      logger.info("Disconnecting users from chat session " + id);
+      io.in(id).disconnectSockets();
+    } else {
+      logger.info("Users already disconnected from room" + id);
+    }
   }, CHAT_TIME + RESULT_TIME + 1000);
   logger.info("Successfully initiated chat for room " + id);
 }

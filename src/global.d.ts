@@ -11,6 +11,5 @@ declare global {
     waitlist?: Collection<WaitlistElements>,
     chatSessions?: Collection<ChatSession>,
     pastChatSessions: Collection<ChatSession>,
-    beta: Collection<WaitlistElements>,
   };
 }
