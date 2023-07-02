@@ -1,4 +1,4 @@
-import { Controller, Middleware, Post } from "@overnightjs/core";
+import { Controller, Get, Middleware, Post } from "@overnightjs/core";
 import { Request, Response } from 'express';
 import { StatusCodes } from "http-status-codes";
 import { check, validationResult } from "express-validator";
@@ -10,9 +10,13 @@ import { SESv2Client, SendEmailCommand } from "@aws-sdk/client-sesv2";
 @Controller('account')
 class AccountController {
 
-  @Post("waitlist")
-  @Middleware([check("email").isEmail().withMessage("Invalid email address").escape()])
-  private async addToWaitlist(req: Request, res: Response) {
+  @Post("register")
+  @Middleware([
+    check("username").isLength({ min: 6 }).withMessage("Username must be at least 6 characters long").escape(),
+    check("password").isLength({ min: 6 }).withMessage("Password must be at least 6 characters long").escape(),
+    check("email").isEmail().withMessage("Invalid email address").escape()
+  ])
+  private async registerUser(req: Request, res: Response) {
     const result = validationResult(req);
     if (!result.isEmpty()) {
       return res.status(StatusCodes.BAD_REQUEST).json({
@@ -20,7 +24,7 @@ class AccountController {
         succeeded: false,
       });
     }
-    logger.info(req.body.email);
+
     const verification = await new Promise((resolve) => {
       quickemailverification.client(process.env.QEV_API_KEY).quickemailverification().verify(
         req.body.email, (err: any, response: any) => {
@@ -30,6 +34,7 @@ class AccountController {
           resolve(response.body.result);
         });
     });
+
     if (verification !== "valid") {
       return res.status(StatusCodes.BAD_REQUEST).json({
         message: "Email failed verification, please check that it was entered correctly.",
@@ -95,26 +100,38 @@ class AccountController {
                     Charset: "UTF-8",
                     Data: "Welcome to Turing Test Chat!"
                   }
-              }
-            },
-            ListManagementOptions: {
-              TopicName: "Account",
-              ContactListName: "TuringTestChat"
-            },
-            FeedbackForwardingEmailAddress: "support@turingtestchat.com",
-            FromEmailAddress: "ttc@turingtestchat.com",
-            ReplyToAddresses: [
-              "support@turingtestchat.com"
-            ]
-          }));
-          logger.info(result.MessageId);
-        } catch (err) {
-          logger.err(err);
+                }
+              },
+              ListManagementOptions: {
+                TopicName: "Account",
+                ContactListName: "TuringTestChat"
+              },
+              FeedbackForwardingEmailAddress: "support@turingtestchat.com",
+              FromEmailAddress: "ttc@turingtestchat.com",
+              ReplyToAddresses: [
+                "support@turingtestchat.com"
+              ]
+            }));
+            logger.info(`Message ID is ${result.MessageId}`);
+            logger.info(`Sent registration email to ${req.body.email}`);
+          } catch (err) {
+            logger.err(err);
+            return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+              message: "An unknown error occurred.",
+              succeeded: false,
+            });
+          }
+          logger.info(`Successfully created account for user ${req.body.user}`);
+          return res.status(StatusCodes.OK).json({
+            message: "Account successfully created! Please log in.",
+            succeeded: true,
+          });
+        } else {
+          return res.status(StatusCodes.CONFLICT).json({
+            message: "Failed to create account.",
+            succeeded: false,
+          });
         }
-        return res.status(StatusCodes.OK).json({
-          message: "Subscribed to waitlist",
-          succeeded: true,
-        });
       } else {
         return res.status(StatusCodes.CONFLICT).json({
           message: "This username or email is already registered.",
@@ -130,23 +147,36 @@ class AccountController {
     }
   }
 
-  @Get("user")
+  @Get("user/:username")
   private async getUser(req: Request, res: Response) {
-    const user = await globalThis.collections.users?.findOne(
-      { username: req.body.username }
-    );
-    return user;
+    try {
+      logger.info("Attempting to get user on homepage");
+      const user = await globalThis.collections.users?.findOne(
+        { username: req.params.username }
+      );
+      if (user) {
+        logger.info(`User ${user?.username} accessed the home page`);
+        return res.status(StatusCodes.OK).json({
+          username: user?.username!,
+          currentDailyCredits: user?.currentDailyCredits!,
+          permanentCredits: user?.permanentCredits!,
+          detection: user?.detection!,
+          deception: user?.deception!,
+          detectionWins: user?.detectionWins!,
+          detectionLosses: user?.detectionLosses!,
+          deceptionWins: user?.deceptionWins!,
+          deceptionLosses: user?.deceptionLosses!,
+          playFoundSound: user?.playFoundSound!
+        });
+      } else {
+        return res.status(StatusCodes.NOT_FOUND);
+      }
+    } catch (err) {
+      logger.err(`Failed to get user ${req.params.username}`);
+      logger.err(err);
+      return res.status(StatusCodes.INTERNAL_SERVER_ERROR);
+    }
   }
-
-  // @Post("forgotpassword")
-  // private async forgotPassword(req: Request, res: Response) {
-  //   try {
-  //     logger.info(`Email ${req.body.email} is resetting password`);
-  //   } catch (err) {
-  //     logger.err(err);
-  //   }
-  // }
-
 }
 
 export default AccountController;
