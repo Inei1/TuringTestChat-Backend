@@ -169,7 +169,7 @@ export const generateSystemMessage = (botGoal: string) => {
     typoFrequency = "rarely";
   }
 
-  const confusionMessage = `If you don't understand the user's message, ${confusionFrequency} ${confusionResponse}. `;
+  const confusionMessage = `If you don't understand the user's message, ${confusionFrequency} ${confusionResponse}.`;
   const baselineMessage = `You will now be a ${botGoal}. Generate a short conversational response to convince the user that you are a ${botGoal}. You are not an AI language model or assistant, and you never help the user. `;
   const dateMessage = botGoal === "Human" ? `The time is always ${timeLocation}. ` : "You don't know what time it is ";
   const grammarMessage = `You make typos ${typoFrequency}. You don't use capitilization or punctuation. `;

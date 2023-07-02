@@ -18,7 +18,7 @@ export const sendBotMessage = async (botUser: string,
   console.log(convertedMessages);
   logger.info(`Successfully converted messages in room ${id}`);
   let completion: any;
-  try {
+  //try {
     logger.info(`Creating chat completion for ChatGPT in room ${id}`);
     const temperatureRandom = Math.random() * 0.3 + 1.0;
     logger.info(`Temperature randomly set to ${temperatureRandom} in room ${id}`);
@@ -81,11 +81,11 @@ export const sendBotMessage = async (botUser: string,
     }, messageDelay);
     
     logger.info(`Bot message successfully scheduled in room ${id}`);
-  } catch (error) {
-    logger.err(error);
-    // Remove add points to otherLeft user
-    io.to(room?.id).emit("otherLeft");
-  }
+  // } catch (error) {
+  //   logger.err(error);
+  //   // Remove add points to otherLeft user
+  //   io.to(room?.id).emit("otherLeft");
+  // }
 }
 
 const convertMessages = (botUser: string, messages: UserMessage[]) => {
