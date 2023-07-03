@@ -296,7 +296,7 @@ class ChatServer extends Server {
             );
           }
         }
-        if (room?.endChatTime === -1) {
+        if (room?.endChatTime === -1 && (room?.user1.username.length > 0 && room?.user2.username.length > 0)) {
           // One user did not accept
           logger.info("User didn't accept: " + socket.id);
           socket.broadcast.to(id).emit("otherWaitingLeft");
