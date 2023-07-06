@@ -49,7 +49,6 @@ export const sendBotMessage = async (botUser: string,
       const pauseTyping = getRandomPercent();
       if (pauseTyping <= 2.5) {
         const typingDelay = 300 + (4700 + 1 - 300) * Math.pow(Math.random(), 0.25);
-        console.log("typingDelay " + typingDelay);
         io.to(room.id).emit("typingResponse", "")
         timeout = setTimeout(() => io.to(room.id).emit("typingResponse", "Chatter"), typingDelay);
       }

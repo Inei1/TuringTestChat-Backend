@@ -290,7 +290,7 @@ const joinRoom = async (user: UserElements, emptyRooms: string[],
             }
           }
         );
-        logger.info(`Removed one daily credit from ${user?.username}`);
+        logger.info(`Removed one daily credit from ${otherUser?.username}`);
       } else if (otherUser?.permanentCredits! > 0) {
         await globalThis.collections.users?.updateOne(
           { username: otherUser?.username },
