@@ -168,23 +168,9 @@ class ChatServer extends Server {
                 $set: { "user1.active": false }
               }
             );
-            logger.info(`Deducting early leaver points from user ${room?.user1.username}, and adding to user ${room?.user2.username}`);
-            const leavingUser = await globalThis.collections.users?.findOne(
-              { username: room?.user1.username }
-            );
+            logger.info(`Adding points to other user ${room?.user2.username}`);
             const otherUser = await globalThis.collections.users?.findOne(
               { username: room?.user2.username }
-            );
-            await globalThis.collections.users?.updateOne(
-              { username: room?.user1.username },
-              {
-                $set: {
-                  deceptionLosses: leavingUser?.deceptionLosses! + 1,
-                  detectionLosses: leavingUser?.detectionLosses! + 1,
-                  detection: leavingUser?.detection! - 4,
-                  deception: leavingUser?.deception! - 2,
-                }
-              }
             );
             await globalThis.collections.users?.updateOne(
               { username: room?.user2.username },
@@ -197,7 +183,7 @@ class ChatServer extends Server {
                 }
               }
             );
-            logger.info(`Successfully deducted early leaver points from user ${room?.user1.username}, and added to user ${room?.user2.username}`);
+            logger.info(`Successfully added points to user ${room?.user2.username}`);
           } else if (room?.user2.socketId === socket.id) {
             logger.info(`Marking user ${room?.user2.username} as early leaver`);
             await globalThis.collections.chatSessions?.updateOne(
@@ -206,23 +192,9 @@ class ChatServer extends Server {
                 $set: { "user2.active": false }
               }
             );
-            logger.info(`Deducting early leaver points from user ${room?.user2.username}, and adding to user ${room?.user2.username}`);
-            const leavingUser = await globalThis.collections.users?.findOne(
-              { username: room?.user2.username }
-            );
+            logger.info(`Adding points to other user ${room?.user2.username}`);
             const otherUser = await globalThis.collections.users?.findOne(
               { username: room?.user1.username }
-            );
-            await globalThis.collections.users?.updateOne(
-              { username: room?.user2.username },
-              {
-                $set: {
-                  deceptionLosses: leavingUser?.deceptionLosses! + 1,
-                  detectionLosses: leavingUser?.detectionLosses! + 1,
-                  detection: leavingUser?.detection! - 4,
-                  deception: leavingUser?.deception! - 2,
-                }
-              }
             );
             await globalThis.collections.users?.updateOne(
               { username: room?.user1.username },
@@ -240,7 +212,6 @@ class ChatServer extends Server {
         } else if (room && room!.endResultTime >= Date.now()) {
           // Did not pick, add points to user who gets otherResult
           socket.to(id).emit("otherResult", {
-          
             result: "Did not pick",
             points: 10,
           });
