@@ -1,4 +1,4 @@
-import { Controller, Middleware, Post } from "@overnightjs/core";
+import { Controller, Get, Middleware, Post } from "@overnightjs/core";
 import { Request, Response } from 'express';
 import { StatusCodes } from "http-status-codes";
 import passport = require("passport");
@@ -17,6 +17,17 @@ class LoginController {
       });
     }
   }
+
+  // @Get("google")
+  // @Middleware(passport.authenticate("google", { scope: ["email"] }))
+  // private async loginGoogle(req: Request, res: Response) { }
+
+  // @Get("google/callback")
+  // @Middleware(passport.authenticate("google", {
+  //   successRedirect: "http://localhost:3000/home",
+  //   failureRedirect: "http://localhost:3000/login",
+  // }))
+  // private async loginGoogleCallback(req: Response, res: Response) { }
 
 }
 

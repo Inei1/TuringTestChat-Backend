@@ -12,6 +12,7 @@ import session from 'express-session';
 import LoginController from '../controllers/LoginController';
 import AccountController from '../controllers/AccountController';
 import passportLocal from "passport-local";
+import * as passportGoogle from "passport-google-oauth20";
 import bcrypt from "bcrypt";
 import MongoStore = require('connect-mongo');
 import { readyChat } from './readyChat';
@@ -20,8 +21,10 @@ import { message } from './message';
 import { startRoom } from './startRoom';
 import { getRoomId } from './getRoomId';
 import SettingsController from '../controllers/SettingsController';
+import cors = require('cors');
 
 const LocalStrategy = passportLocal.Strategy;
+const GoogleStrategy = passportGoogle.Strategy;
 
 dotenv.config();
 
@@ -54,7 +57,7 @@ class ChatServer extends Server {
     this.app.use(bodyParser.urlencoded({ extended: true }));
     this.app.use(bodyParser.json());
     this.app.use(this.sessionMiddleware);
-  
+
     connectToDatabase().then((collections) => globalThis.collections = collections);
     passport.serializeUser((user: any, done) => {
       logger.info(`Serializing user ${user.username}`);
@@ -69,7 +72,7 @@ class ChatServer extends Server {
           logger.info(`Found user ${foundUser.username}`);
           done(undefined, foundUser);
         } else {
-          logger.info(`Did not find user ${user.username}`);
+          logger.err(`Did not find user ${user.username}`);
           done("User not found", undefined);
         }
       } catch (err) {
@@ -80,8 +83,9 @@ class ChatServer extends Server {
     passport.use(new LocalStrategy({ usernameField: "username", passwordField: "password" }, (username, password, done) => {
       try {
         logger.info(`Authenticating user ${username} using local strategy`);
-        globalThis.collections.users?.findOne({ username: username }).then((user) => {
+        globalThis.collections.users?.findOne({ $or: [{ username: username }, { email: username }] }).then((user) => {
           if (!user) {
+            logger.info(`User ${username} not found`)
             return done(undefined, false, { message: `User ${username} not found` });
           }
           bcrypt.compare(password, user.password).then((valid) => {
@@ -89,6 +93,7 @@ class ChatServer extends Server {
               logger.info(`User ${username} authenticated`);
               return done(undefined, user);
             } else {
+              logger.info(`User ${username} entered an invalid password`)
               return done(undefined, false, { message: "Invalid username or password" });
             }
           })
@@ -97,6 +102,27 @@ class ChatServer extends Server {
         return done(err);
       }
     }));
+
+    // passport.use(new GoogleStrategy({
+    //   clientID: process.env.GOOGLE_CLIENT_ID!,
+    //   clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    //   callbackURL: process.env.NODE_ENV === "production" ? "https://api.turingtestchat.com/login/google/callback" : "http://localhost:8080/login/google/callback",
+    //   passReqToCallback: true,
+    // }, (_request: any, _accessToken: any, _refreshToken: any, profile: any,
+    //   done: (arg0: null, arg1: any) => any) => {
+    //   // we only have access to email
+    //   const existingUser = globalThis.collections.users?.findOne({ email: profile.emails[0] });
+    //   if (existingUser) {
+    //     // existing account
+    //     return existingUser;
+    //   } else {
+    //     // create new account
+
+    //   }
+    //   console.log(profile);
+    //   //globalThis.collections.users?.findOne({ username: username })
+    //   done(null, profile)
+    // }));
 
     this.app.use(passport.initialize());
     this.app.use(passport.session());
@@ -159,7 +185,7 @@ class ChatServer extends Server {
         if (room && room.endChatTime >= Date.now()) {
           // Remove points from leaving user, add points to otherLeft user
           socket.to(id).emit("otherLeft");
-      
+
           if (room?.user1.socketId === socket.id) {
             logger.info(`Marking user ${room?.user1.username} as early leaver`);
             await globalThis.collections.chatSessions?.updateOne(

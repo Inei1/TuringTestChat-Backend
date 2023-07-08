@@ -403,7 +403,7 @@ const joinRoom = async (user: UserElements, emptyRooms: string[],
       const room = await globalThis.collections.chatSessions?.findOne(
         { id: roomId }
       );
-      if (room?.user1.ready && room.endChatTime !== -1) {
+      if (room?.user1.ready) {
         logger.info(`User is ready, initiating chat for ${roomId}`);
         await initiateChat(roomId, io, socket, room.user2.canSend, room?.user2.goal!, room?.user1.goal!, false, "user2", "user1");
         if (room.user2.canSend) {

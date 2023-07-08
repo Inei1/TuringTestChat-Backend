@@ -25,28 +25,11 @@ class AccountController {
       });
     }
 
-    const verification = await new Promise((resolve) => {
-      quickemailverification.client(process.env.QEV_API_KEY).quickemailverification().verify(
-        req.body.email, (err: any, response: any) => {
-          if (err) {
-            logger.err(err);
-          }
-          resolve(response.body.result);
-        });
-    });
-
-    if (verification !== "valid") {
-      return res.status(StatusCodes.BAD_REQUEST).json({
-        message: "Email failed verification, please check that it was entered correctly.",
-        succeeded: false,
-      });
-    }
     const hashedPassword = await bcrypt.hash(req.body.password, 10);
     try {
       const existingUser = await globalThis.collections.users?.findOne(
         { $or: [{ email: req.body.email }, { username: req.body.username }] }
       );
-      logger.info(`Existing user for account is ${existingUser?.username} with email ${existingUser?.email}`);
       if (!existingUser) {
         const updateInfo = await globalThis.collections.users?.updateOne(
           { email: req.body.email, username: req.body.username },
@@ -69,80 +52,97 @@ class AccountController {
             }
           },
           { upsert: true });
+
         if (updateInfo?.upsertedCount! > 0) {
-          try {
-            const result = await new SESv2Client({
-              credentials: {
-                accessKeyId: process.env.AWS_ACCESS_KEY!,
-                secretAccessKey: process.env.AWS_SECRET_KEY!,
-              },
-              apiVersion: "2019-09-27",
-              region: "us-east-1"
-            }).send(new SendEmailCommand({
-              Destination: {
-                ToAddresses: [
-                  req.body.email,
-                ]
-              },
-              Content: {
-                Simple: {
-                  Body: {
-                    Html: {
-                      Charset: "UTF-8",
-                      Data: `<html><p>Welcome to Turing Test Chat! Turing Test Chat is free for everyone to use until July 9, so it's time to start <a href="https://www.turingtestchat.com/home">chatting</a>. <br/>If you have any questions, check out the <a href="https://www.turingtestchat.com/faq">FAQ</a> or reply to this email.<br/> <a href={{amazonSESUnsubscribeUrl}}>Click here to unsubscribe</a></p></html>`
-                    },
-                    Text: {
-                      Charset: "UTF-8",
-                      Data: "Welcome to Turing Test Chat!\n\n Turing Test Chat is free for everyone to use until July 9, so it's time to start chatting. If you have any questions, check out the FAQ or reply to this email.\n\n - TuringTestChat\n{{amazonSESUnsubscribeUrl}}"
-                    }
-                  },
-                  Subject: {
-                    Charset: "UTF-8",
-                    Data: "Welcome to Turing Test Chat!"
-                  }
+
+          const verification = await new Promise((resolve) => {
+            quickemailverification.client(process.env.QEV_API_KEY).quickemailverification().verify(
+              req.body.email, (err: any, response: any) => {
+                if (err) {
+                  logger.err(err);
                 }
-              },
-              ListManagementOptions: {
-                TopicName: "Account",
-                ContactListName: "TuringTestChat"
-              },
-              FeedbackForwardingEmailAddress: "support@turingtestchat.com",
-              FromEmailAddress: "ttc@turingtestchat.com",
-              ReplyToAddresses: [
-                "support@turingtestchat.com"
-              ]
-            }));
-            logger.info(`Message ID is ${result.MessageId}`);
-            logger.info(`Sent registration email to ${req.body.email}`);
-          } catch (err) {
-            logger.err(err);
-            return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
-              message: "An unknown error occurred.",
-              succeeded: false,
+                resolve(response.body.result);
+              });
+          });
+
+          if (verification !== "valid") {
+            logger.info(`Email ${req.body.email} could not be validated`);
+          } else {
+            try {
+              const result = await new SESv2Client({
+                credentials: {
+                  accessKeyId: process.env.AWS_ACCESS_KEY!,
+                  secretAccessKey: process.env.AWS_SECRET_KEY!,
+                },
+                apiVersion: "2019-09-27",
+                region: "us-east-1"
+              }).send(new SendEmailCommand({
+                Destination: {
+                  ToAddresses: [
+                    req.body.email,
+                  ]
+                },
+                Content: {
+                  Simple: {
+                    Body: {
+                      Html: {
+                        Charset: "UTF-8",
+                        Data: `<html><p>Welcome to Turing Test Chat!, It's time to start <a href="https://www.turingtestchat.com/home">chatting</a>. <br/>If you have any questions, check out the <a href="https://www.turingtestchat.com/faq">FAQ</a> or reply to this email.<br/> <a href={{amazonSESUnsubscribeUrl}}>Click here to unsubscribe</a></p></html>`
+                      },
+                      Text: {
+                        Charset: "UTF-8",
+                        Data: "Welcome to Turing Test Chat!\n\n It's time to start chatting. If you have any questions, check out the FAQ or reply to this email.\n\n - TuringTestChat\n{{amazonSESUnsubscribeUrl}}"
+                      }
+                    },
+                    Subject: {
+                      Charset: "UTF-8",
+                      Data: "Welcome to Turing Test Chat!"
+                    }
+                  }
+                },
+                ListManagementOptions: {
+                  TopicName: "Account",
+                  ContactListName: "TuringTestChat"
+                },
+                FeedbackForwardingEmailAddress: "support@turingtestchat.com",
+                FromEmailAddress: "ttc@turingtestchat.com",
+                ReplyToAddresses: [
+                  "support@turingtestchat.com"
+                ]
+              }));
+              logger.info(`Message ID is ${result.MessageId}`);
+              logger.info(`Sent registration email to ${req.body.email}`);
+            } catch (err) {
+              logger.err(err);
+              return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+                message: "An unknown error occurred.",
+                succeeded: false,
+              });
+            }
+            logger.info(`Successfully created validated email account for user ${req.body.username}`);
+            return res.status(StatusCodes.OK).json({
+              message: "Account successfully created! Please log in.",
             });
           }
-          logger.info(`Successfully created account for user ${req.body.user}`);
+          logger.info(`Successfully created invalidated email account for user ${req.body.username}`);
           return res.status(StatusCodes.OK).json({
-            message: "Account successfully created! Please log in.",
-            succeeded: true,
+            message: "Account successfully created! Your email could not be validated, but you can still play. Please log in.",
           });
         } else {
           return res.status(StatusCodes.CONFLICT).json({
             message: "Failed to create account.",
-            succeeded: false,
           });
         }
       } else {
+        logger.info(`Existing user for account is ${existingUser?.username} with email ${existingUser?.email}`);
         return res.status(StatusCodes.CONFLICT).json({
           message: "This username or email is already registered.",
-          succeeded: false,
         });
       }
     } catch (error) {
       logger.err(error);
       return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
         message: "An unknown error occurred.",
-        succeeded: false,
       });
     }
   }
