@@ -6,6 +6,9 @@ import logger from "jet-logger";
 var quickemailverification = require('quickemailverification');
 import bcrypt from "bcrypt";
 import { SESv2Client, SendEmailCommand } from "@aws-sdk/client-sesv2";
+import * as crypto from "crypto";
+import { Token } from "src/types";
+import { Base64 } from "js-base64";
 
 @Controller('account')
 class AccountController {
@@ -175,6 +178,147 @@ class AccountController {
       logger.err(`Failed to get user ${req.params.username}`);
       logger.err(err);
       return res.status(StatusCodes.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  @Post("password/reset/request")
+  private async resetPasswordRequest(req: Request, res: Response) {
+    try {
+      logger.info(`Password reset request has been made for ${req.body.email}`);
+      const existingUser = await globalThis.collections.users?.findOne(
+        { email: req.body.email }
+      );
+      if (existingUser) {
+        let token = crypto.randomBytes(32).toString("hex");
+        const updateInfo = await globalThis.collections.passwordResetTokens?.updateOne(
+          { email: req.body.email },
+          // one hour
+          { $push: { tokens: { value: token, expiration: Date.now() + 3600000 } } },
+          { upsert: true }
+        );
+        if (updateInfo.modifiedCount > 0) {
+          const b64Email = Base64.encodeURL(req.body.email);
+          const result = await new SESv2Client({
+            credentials: {
+              accessKeyId: process.env.AWS_ACCESS_KEY!,
+              secretAccessKey: process.env.AWS_SECRET_KEY!,
+            },
+            apiVersion: "2019-09-27",
+            region: "us-east-1"
+          }).send(new SendEmailCommand({
+            Destination: {
+              ToAddresses: [
+                req.body.email,
+              ]
+            },
+            Content: {
+              Simple: {
+                Body: {
+                  Html: {
+                    Charset: "UTF-8",
+                    Data: `<html><p>Your account on turingtestchat.com has received a password reset request.</p>
+                    <p>If you did not make this request, no further action is required.</p>
+                    <p><a href="https://www.turingtestchat.com/resetpassword?token=${token}&email=${b64Email}">To reset your password, click here</a></p>
+                    <p>This password reset request will expire in one hour. If your request expires, <a href="https://www.turingtestchat.com/forgotpassword">you can submit a new one here</a></p>
+                    <p>For your information, here are some details:</p>
+                    <p>username: ${existingUser?.username}, request timestamp: ${Date.now()}</p>
+                    <p>If you have any questions, feel free to reply to this message.</p>
+                    <a href={{amazonSESUnsubscribeUrl}}>Click here to unsubscribe</a>
+                    </html>`
+                  },
+                  Text: {
+                    Charset: "UTF-8",
+                    Data: `Your account on turingtestchat.com has received a password reset request\n.
+                    If you did not make this request, no further action is required\n.
+                    To reset your password, click here: https://www.turingtestchat.com/resetpassword?token=${token}&email=${b64Email} \n
+                    This password reset request will expire in one hour. If your request expires, you can submit a new one at https://www.turingtestchat.com/forgotpassword \n
+                    For your information, here are some details: \n
+                    username: ${existingUser?.username}, request timestamp: ${Date.now()} \n
+                    If you have any questions, feel free to reply to this message. \n
+                    {{amazonSESUnsubscribeUrl}}`
+                  }
+                },
+                Subject: {
+                  Charset: "UTF-8",
+                  Data: "Turing Test Chat Password Reset Request"
+                }
+              }
+            },
+            ListManagementOptions: {
+              TopicName: "Account",
+              ContactListName: "TuringTestChat"
+            },
+            FeedbackForwardingEmailAddress: "support@turingtestchat.com",
+            FromEmailAddress: "ttc@turingtestchat.com",
+            ReplyToAddresses: [
+              "support@turingtestchat.com"
+            ]
+          }));
+          logger.info(`Message ID is ${result.MessageId}`);
+          logger.info(`Sent password reset email to ${req.body.email}`);
+        }
+      } else {
+        logger.warn(`No existing user for ${req.body.email} found during password reset request`);
+      }
+      return res.status(StatusCodes.OK).json({
+        message: "A password reset email has been sent to the email address, if it exists in the system."
+      });
+    } catch (err) {
+      logger.err(err);
+      return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+        message: "An unknown error occurred",
+      });
+    }
+  }
+
+  @Post("password/reset")
+  private async resetPassword(req: Request, res: Response) {
+    const email = Base64.decode(req.body.email);
+    const tokens = await globalThis.collections.passwordResetTokens?.findOne(
+      { email: email }
+    );
+    if (tokens && tokens.tokens) {
+      let resultCode = StatusCodes.UNAUTHORIZED;
+      let resultMessage = "Your password reset was invalid, please make a new request.";
+      for (let i = 0; i < tokens.tokens.length; ++i) {
+        const token = tokens.tokens[i];
+        if (token.value === req.body.token) {
+          if (token.expiration >= Date.now()) {
+            const hashedPassword = await bcrypt.hash(req.body.password, 10);
+            try {
+              await globalThis.collections.users?.updateOne(
+                { email: email },
+                {
+                  $set: {
+                    password: hashedPassword,
+                  }
+                },
+                { upsert: true });
+              logger.info(`${email} successfully updated password`);
+              return res.status(StatusCodes.OK).json({
+                message: "Password reset successful, please log in with your new password."
+              });
+            } catch (err) {
+              logger.err(`${email} failed to reset password ${hashedPassword} with token ${req.body.token}`);
+              return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+                message: "An unknown error occurred when attempting to change password."
+              });
+            }
+          } else {
+            logger.info(`${email} attempted to reset an expired password (current time is ${Date.now()}, expiration is ${token.expiration})`);
+            resultCode = StatusCodes.UNAUTHORIZED;
+            resultMessage = "Your password reset has expired, please make a new request.";
+            return res.status(StatusCodes.UNAUTHORIZED).json({
+              message: "Your password reset has expired, please make a new request.",
+            });
+          }
+        }
+      }
+    } else {
+      logger.info(`${email} attempted to reset password without making a request`)
+      return res.status(StatusCodes.BAD_REQUEST).json({
+        message: "You need to make a password reset request to reset your password.",
+      })
     }
   }
 }

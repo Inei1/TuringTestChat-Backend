@@ -53,3 +53,13 @@ export interface ChatSession {
   user2: ChatUser;
   messages: UserMessage[];
 }
+
+export interface Token {
+  value: string;
+  expiration: number;
+}
+
+export interface PasswordResetTokens {
+  email: string;
+  tokens: Token[];
+}
