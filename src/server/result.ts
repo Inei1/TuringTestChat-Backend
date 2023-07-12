@@ -9,7 +9,7 @@ const MINOR_CORRECT_POINTS = 4;
 const MAJOR_CORRECT_POINTS = 10;
 
 export const result = async (data: any, socket: any) => {
-  logger.info("Calculating result from " + data);
+  // logger.info("Calculating result from " + data);
   const id = getRoomId(socket);
   let pastSession = false;
   let endTime = await globalThis.collections.chatSessions?.findOne(

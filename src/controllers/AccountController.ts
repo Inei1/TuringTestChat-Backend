@@ -7,7 +7,6 @@ var quickemailverification = require('quickemailverification');
 import bcrypt from "bcrypt";
 import { SESv2Client, SendEmailCommand } from "@aws-sdk/client-sesv2";
 import * as crypto from "crypto";
-import { Token } from "src/types";
 import { Base64 } from "js-base64";
 
 @Controller('account')
@@ -15,7 +14,7 @@ class AccountController {
 
   @Post("register")
   @Middleware([
-    check("username").isLength({ min: 6 }).withMessage("Username must be at least 6 characters long").escape(),
+    check("username").notEmpty().withMessage("Username must not be empty").escape(),
     check("password").isLength({ min: 6 }).withMessage("Password must be at least 6 characters long").escape(),
     check("email").isEmail().withMessage("Invalid email address").escape()
   ])
@@ -153,12 +152,10 @@ class AccountController {
   @Get("user/:username")
   private async getUser(req: Request, res: Response) {
     try {
-      logger.info("Attempting to get user on homepage");
       const user = await globalThis.collections.users?.findOne(
         { username: req.params.username }
       );
       if (user) {
-        logger.info(`User ${user?.username} accessed the home page`);
         return res.status(StatusCodes.OK).json({
           username: user?.username!,
           currentDailyCredits: user?.currentDailyCredits!,
@@ -196,7 +193,7 @@ class AccountController {
           { $push: { tokens: { value: token, expiration: Date.now() + 3600000 } } },
           { upsert: true }
         );
-        if (updateInfo.modifiedCount > 0) {
+        if (updateInfo?.modifiedCount! > 0) {
           const b64Email = Base64.encodeURL(req.body.email);
           const result = await new SESv2Client({
             credentials: {

@@ -15,13 +15,14 @@ import passportLocal from "passport-local";
 import * as passportGoogle from "passport-google-oauth20";
 import bcrypt from "bcrypt";
 import MongoStore = require('connect-mongo');
-import { readyChat } from './readyChat';
 import { result } from './result';
 import { message } from './message';
-import { startRoom } from './startRoom';
+import { enterQueue } from './enterQueue';
 import { getRoomId } from './getRoomId';
 import SettingsController from '../controllers/SettingsController';
 import cors = require('cors');
+import { WaitingUser } from 'src/types';
+//import cookieSession from "cookie-session";
 
 const LocalStrategy = passportLocal.Strategy;
 const GoogleStrategy = passportGoogle.Strategy;
@@ -30,7 +31,6 @@ dotenv.config();
 
 class ChatServer extends Server {
 
-  emptyRooms: string[] = [];
   apiKey = process.env.OPENAI_API_KEY;
   config = new Configuration({
     apiKey: this.apiKey,
@@ -41,12 +41,12 @@ class ChatServer extends Server {
     secret: process.env.EXPRESS_SESSION_SECRET!,
     resave: false,
     saveUninitialized: true,
-    cookie: {
-      maxAge: 60 * 60 * 24 * 1000,
-      httpOnly: false,
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-      secure: process.env.NODE_ENV === "production" ? true : "auto",
-    } // 24 hours
+    // cookie: {
+    //   maxAge: 60 * 60 * 24 * 1000,
+    //   httpOnly: false,
+    //   sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    //   secure: process.env.NODE_ENV === "production" ? true : "auto",
+    // } // 24 hours
   });
 
   private readonly DEV_MSG = 'Express Server is running in development mode. ' +
@@ -60,12 +60,12 @@ class ChatServer extends Server {
 
     connectToDatabase().then((collections) => globalThis.collections = collections);
     passport.serializeUser((user: any, done) => {
-      logger.info(`Serializing user ${user.username}`);
+      // logger.info(`Serializing user ${user.username}`);
       done(undefined, user);
     });
 
     passport.deserializeUser(async (user: any, done) => {
-      logger.info(`Deserializing user ${user.username}`);
+      // logger.info(`Deserializing user ${user.username}`);
       try {
         const foundUser = await globalThis.collections.users?.findOne({ username: user.username });
         if (foundUser) {
@@ -82,7 +82,7 @@ class ChatServer extends Server {
 
     passport.use(new LocalStrategy({ usernameField: "username", passwordField: "password" }, (username, password, done) => {
       try {
-        logger.info(`Authenticating user ${username} using local strategy`);
+        // logger.info(`Authenticating user ${username} using local strategy`);
         globalThis.collections.users?.findOne({ $or: [{ username: username }, { email: username }] }).then((user) => {
           if (!user) {
             logger.info(`User ${username} not found`)
@@ -133,6 +133,7 @@ class ChatServer extends Server {
       const msg = this.DEV_MSG + process.env.EXPRESS_PORT;
       this.app.get('*', (req, res) => res.send(msg));
     }
+    globalThis.waitingUsers = [];
   }
 
   httpsOptions = {
@@ -165,7 +166,7 @@ class ChatServer extends Server {
     io.on("connection", (socket) => {
       logger.info("User connected: " + socket.id);
 
-      socket.on("startRoom", async (data) => await startRoom(data, this.emptyRooms, socket, io, this.openai));
+      socket.on("enterQueue", async (data) => await enterQueue(data, socket, io, this.openai));
 
       socket.on("message", async (data) => await message(data, io, socket, this.openai));
 
@@ -174,8 +175,6 @@ class ChatServer extends Server {
       socket.on("typing", () => socket.broadcast.to(getRoomId(socket)).emit("typingResponse", "Chatter"));
 
       socket.on("typingStop", () => socket.broadcast.to(getRoomId(socket)).emit("typingResponse", ""));
-
-      socket.on("readyChat", async (data) => await readyChat(data, io, socket, this.openai));
 
       socket.on("disconnecting", async () => {
         const id = getRoomId(socket);
@@ -293,84 +292,9 @@ class ChatServer extends Server {
             );
           }
         }
-        if (room?.endChatTime === -1 && (room?.user1.username.length > 0 && room?.user2.username.length > 0)) {
-          // One user did not accept
-          logger.info("User didn't accept: " + socket.id);
-          socket.broadcast.to(id).emit("otherWaitingLeft");
-          if (room?.user1.socketId === socket.id) {
-            const leavingUser = await globalThis.collections.users?.findOne(
-              { username: room?.user1.username }
-            );
-            const otherUser = await globalThis.collections.users?.findOne(
-              { username: room?.user2.username }
-            );
-            await globalThis.collections.users?.updateOne(
-              { username: leavingUser?.username },
-              {
-                $set: {
-                  deceptionLosses: leavingUser?.deceptionLosses! + 1,
-                  detectionLosses: leavingUser?.detectionLosses! + 1,
-                  detection: leavingUser?.detection! - 2,
-                  deception: leavingUser?.deception! - 1,
-                }
-              }
-            );
-            // Add a credit back to the other user
-            await globalThis.collections.users?.updateOne(
-              { username: otherUser?.username },
-              {
-                $set: {
-                  permanentCredits: otherUser?.permanentCredits! + 1
-                }
-              }
-            );
-          }
-        } else if (room?.user2.socketId === socket.id) {
-          const leavingUser = await globalThis.collections.users?.findOne(
-            { username: room?.user2.username }
-          );
-          const otherUser = await globalThis.collections.users?.findOne(
-            { username: room?.user1.username }
-          );
-          await globalThis.collections.users?.updateOne(
-            { username: leavingUser?.username },
-            {
-              $set: {
-                deceptionLosses: leavingUser?.deceptionLosses! + 1,
-                detectionLosses: leavingUser?.detectionLosses! + 1,
-                detection: leavingUser?.detection! - 2,
-                deception: leavingUser?.deception! - 1,
-              }
-            }
-          );
-          // Add a credit back to the other user
-          await globalThis.collections.users?.updateOne(
-            { username: otherUser?.username },
-            {
-              $set: {
-                permanentCredits: otherUser?.permanentCredits! + 1
-              }
-            }
-          );
-        }
-        this.emptyRooms = this.emptyRooms.filter((room) => {
-          return room !== id;
+        globalThis.waitingUsers = globalThis.waitingUsers.filter((user) => {
+          return user.roomId !== id;
         });
-        logger.info(`room ${id} deleted, moving to past chat sessions`);
-        try {
-          const newRoom = await globalThis.collections.chatSessions?.findOne(
-            { id: id }
-          );
-          if (newRoom) {
-            await globalThis.collections.pastChatSessions?.insertOne(newRoom!);
-            await globalThis.collections.chatSessions?.deleteOne(newRoom!);
-          } else {
-            logger.info(`room ${id} is already deleted, it may have been deleted previously or there is a bug.`);
-          }
-        } catch (err) {
-          logger.err(`An error occurred when attempting to move room ${id} to past chat sessions`);
-          logger.err(err);
-        }
       });
 
       socket.on("disconnect", () => {

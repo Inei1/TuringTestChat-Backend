@@ -38,7 +38,6 @@ export interface ChatUser {
   username: string;
   bot: boolean;
   result: string | null;
-  ready: boolean;
   canSend: boolean;
   active: boolean;
   // only used when bot
@@ -62,4 +61,10 @@ export interface Token {
 export interface PasswordResetTokens {
   email: string;
   tokens: Token[];
+}
+
+export interface WaitingUser {
+  username: string;
+  roomId: string;
+  socketId: string;
 }
