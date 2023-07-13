@@ -58,7 +58,6 @@ export const enterQueue = async (data: any,
       );
       // if we have already found a room, or the user left, don't add a bot.
       if (!room && socket.connected) {
-        console.log(joinInterval);
         if (joinChance >= getRandomPercent()) {
           // join a bot
           logger.info(`${data.username} is joining into a bot with joinChance ${joinChance}`)

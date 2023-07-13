@@ -21,8 +21,6 @@ import { enterQueue } from './enterQueue';
 import { getRoomId } from './getRoomId';
 import SettingsController from '../controllers/SettingsController';
 import cors = require('cors');
-import { WaitingUser } from 'src/types';
-//import cookieSession from "cookie-session";
 
 const LocalStrategy = passportLocal.Strategy;
 const GoogleStrategy = passportGoogle.Strategy;

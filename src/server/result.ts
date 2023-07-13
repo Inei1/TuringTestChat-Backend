@@ -15,13 +15,14 @@ export const result = async (data: any, socket: any) => {
   let endTime = await globalThis.collections.chatSessions?.findOne(
     { id: id }
   );
+  // TODO: check if this is really necessary
   if (!endTime) {
     pastSession = true;
     endTime = await globalThis.collections.pastChatSessions?.findOne(
       { id: id }
     );
   }
-  logger.info("Room " + id + " found for result");
+  // logger.info("Room " + id + " found for result");
   // add another second to send response
   if (endTime!.endResultTime + 1000 >= Date.now()) {
     // TODO: authenticate user and socket
