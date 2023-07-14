@@ -111,7 +111,7 @@ export const result = async (data: any, socket: any) => {
       otherPoints + ", other " + other);
     logger.info("Attempting to update user in the database");
     if (data.name === room?.user1.name) {
-      logger.info(`Updated result for user1 in ${id}`);
+      // logger.info(`Updated result for user1 in ${id}`);
       if (pastSession) {
         await globalThis.collections.pastChatSessions?.updateOne(
           { id: id },
@@ -151,7 +151,7 @@ export const result = async (data: any, socket: any) => {
       );
       logger.info("Successfully updated user1 in room " + id);
     } else if (data.name === room?.user2.name) {
-      logger.info(`Updated result for user2 in ${id}`);
+      // logger.info(`Updated result for user2 in ${id}`);
       if (pastSession) {
         await globalThis.collections.pastChatSessions?.updateOne(
           { id: id },
