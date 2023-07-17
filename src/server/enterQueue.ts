@@ -46,12 +46,12 @@ export const enterQueue = async (data: any,
     if (botInterval) {
       clearInterval(botInterval);
     }
-    const waitingUser = globalThis.waitingUsers.pop()!;
-    if (!waitingUser) {
-      logger.err("Something went horribly wrong when joining a new user!!!");
-      globalThis.waitingUsers.push(waitingUser);
-    }
-    setTimeout(async () => await joinHumanChat(data.username, newRoomId, socket, io, waitingUser), Math.random() * 3000);
+    // const waitingUser = globalThis.waitingUsers.pop()!;
+    // if (!waitingUser) {
+    //   logger.err("Something went horribly wrong when joining a new user!!!");
+    //   globalThis.waitingUsers.push(waitingUser);
+    // }
+    setTimeout(async () => await joinHumanChat(data.username, newRoomId, socket, io), Math.random() * 3000);
   } else {
     // If they didn't join instantly,
     // they will be entered into an empty room where they can be joined at any time.
@@ -87,8 +87,7 @@ export const enterQueue = async (data: any,
 
 const joinHumanChat = async (username: string, newRoomId: string,
   socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,
-  io: SocketServer<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,
-  waitingUser: WaitingUser) => {
+  io: SocketServer<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>) => {
   try {
     const user = await globalThis.collections.users?.findOne(
       { username: username },
@@ -97,6 +96,7 @@ const joinHumanChat = async (username: string, newRoomId: string,
       // logger.info("New room is queuing like normal");
       logger.info(`Username of joining user is ${user.username}`);
       if (socket.connected) {
+        const waitingUser = globalThis.waitingUsers.pop()!
         if (waitingUser && waitingUser.username === username) {
           // Somehow the waiting user is the same as the joining user.
           // We shouldn't add them to the chat, instead ignore the current action.
