@@ -21,6 +21,7 @@ import { enterQueue } from './enterQueue';
 import { getRoomId } from './getRoomId';
 import SettingsController from '../controllers/SettingsController';
 import cors = require('cors');
+import { instrument } from '@socket.io/admin-ui';
 
 const LocalStrategy = passportLocal.Strategy;
 const GoogleStrategy = passportGoogle.Strategy;
@@ -142,11 +143,19 @@ class ChatServer extends Server {
   public startHttp(): void {
     const httpServer = http.createServer(this.app);
     const io = new SocketServer(httpServer, {
-      // cors: {
-      //   origin: "https://www.turingtestchat.com",
-      //   methods: ["GET", "POST"],
-      // }
+      cors: {
+        origin: ["admin.socket.io", "localhost:8080"],
+      }
     });
+
+    instrument(io, {
+      auth: {
+        type: "basic",
+        username: "thinker951",
+        password: process.env.SOCKET_IO_ADMIN_PASSWORD!,
+      },
+      mode: "development",
+    })
 
     const wrap = (middleware: any) => (socket: any, next: any) => middleware(socket.request, {}, next);
     io.use(wrap(this.sessionMiddleware));
@@ -215,7 +224,7 @@ class ChatServer extends Server {
                 $set: { "user2.active": false }
               }
             );
-            logger.info(`Adding points to other user ${room?.user2.username}`);
+            logger.info(`Adding points to other user ${room?.user1.username}`);
             const otherUser = await globalThis.collections.users?.findOne(
               { username: room?.user1.username }
             );

@@ -1,5 +1,7 @@
+import { Socket } from "socket.io";
 import { getRoomId } from "./getRoomId";
 import logger from 'jet-logger';
+import { DefaultEventsMap } from "socket.io/dist/typed-events";
 
 const MAJOR_WRONG_POINTS = -3;
 const MINOR_WRONG_POINTS = -1;
@@ -8,7 +10,8 @@ const UNKNOWN_OTHER_POINTS = 2;
 const MINOR_CORRECT_POINTS = 4;
 const MAJOR_CORRECT_POINTS = 10;
 
-export const result = async (data: any, socket: any) => {
+export const result = async (data: any,
+  socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>) => {
   // logger.info("Calculating result from " + data);
   const id = getRoomId(socket);
   let pastSession = false;
@@ -21,6 +24,9 @@ export const result = async (data: any, socket: any) => {
     endTime = await globalThis.collections.pastChatSessions?.findOne(
       { id: id }
     );
+  }
+  if (!endTime) {
+    logger.err(`Did not find a chat session to compute the result for. Data is name=${data.name}, result=${data.result}, socket id is ${socket.id} `);
   }
   // logger.info("Room " + id + " found for result");
   // add another second to send response
@@ -107,9 +113,9 @@ export const result = async (data: any, socket: any) => {
         otherPoints = MAJOR_CORRECT_POINTS;
       }
     }
-    logger.info("Computed result for room " + id + " with self points " + selfPoints + ", other points " +
-      otherPoints + ", other " + other);
-    logger.info("Attempting to update user in the database");
+    // logger.info("Computed result for room " + id + " with self points " + selfPoints + ", other points " +
+    //  otherPoints + ", other " + other);
+    // logger.info("Attempting to update user in the database");
     if (data.name === room?.user1.name) {
       logger.info(`Updated result for user1 in ${id}`);
       if (pastSession) {
@@ -149,7 +155,7 @@ export const result = async (data: any, socket: any) => {
           }
         }
       );
-      logger.info("Successfully updated user1 in room " + id);
+      // logger.info("Successfully updated user1 in room " + id);
     } else if (data.name === room?.user2.name) {
       logger.info(`Updated result for user2 in ${id}`);
       if (pastSession) {
@@ -189,19 +195,19 @@ export const result = async (data: any, socket: any) => {
           }
         }
       );
-      logger.info("Successfully updated user2 in room " + id);
+      // logger.info("Successfully updated user2 in room " + id);
     } else {
       logger.warn("Invalid user " + data.name + " tried to compute result");
     }
 
     // give points to otherResult user
-    logger.info("Sending other result for room " + id);
-    socket.broadcast.to(room?.id).emit("otherResult", {
+    // logger.info("Sending other result for room " + id);
+    socket.broadcast.to(room?.id!).emit("otherResult", {
       result: data.result,
       points: otherPoints
     });
 
-    logger.info("Sending self result for room " + id)
+    // logger.info("Sending self result for room " + id)
     socket.emit("selfResult", {
       result: data.result,
       points: selfPoints,

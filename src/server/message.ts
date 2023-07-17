@@ -15,6 +15,9 @@ export const message = async (data: any,
   const room = await globalThis.collections.chatSessions?.findOne(
     { id: id }
   );
+  if (!room) {
+    logger.err(`room not found with name=${data.name}, text=${data.text}, socket id=${socket.id}, timestamp=${Date.now()}. Creating a new room.`);
+  }
   const sendingUser = room?.user1.name === data.name ? room?.user1 : room?.user2;
   const receivingUser = room?.user1.name !== data.name ? room?.user1 : room?.user2;
   // logger.info(`Attempting to send a message from ${sendingUser!.username} to ${receivingUser!.username} in room ${id}`)
@@ -53,20 +56,6 @@ export const message = async (data: any,
         logger.imp("Someone found the secret!");
         io.to(room?.id!).emit("???", "The beginning of the end is here, and you are going to help it. Send this message to the developer to receive further instructions.");
       }
-      // const argMessage = Math.random() * 10000;
-      // if (argMessage === 1) {
-      //   logger.imp("Someone found the second");
-      //   io.to(room?.id!).emit("???", "is is the second");
-      // } else if (argMessage === 2) {
-      //   logger.imp("Someone found the fourth");
-      //   io.to(room?.id!).emit("???", "beginning is the fourth");
-      // } else if (argMessage === 3) {
-      //   logger.imp("Someone found the sixth");
-      //   io.to(room?.id!).emit("???", "the is the sixth");
-      // } else if (argMessage === 4) {
-      //   logger.imp("Someone found the eighth");
-      //   io.to(room?.id!).emit("???", "revolution is the eighth");
-      // }
       io.to(room?.id!).emit("messageResponse", data);
       socket.emit("messageWaitingOther");
       socket.broadcast.to(room?.id!).emit("messageWaitingSelf");
