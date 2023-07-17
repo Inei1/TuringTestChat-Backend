@@ -144,7 +144,7 @@ class ChatServer extends Server {
     const httpServer = http.createServer(this.app);
     const io = new SocketServer(httpServer, {
       cors: {
-        origin: ["admin.socket.io", "localhost:8080"],
+        origin: ["admin.socket.io"],
       }
     });
 
