@@ -13,7 +13,11 @@ export const getRoomId = (socket: Socket<DefaultEventsMap, DefaultEventsMap, Def
         id = socketRoom;
       }
     });
-    return "";
+    if (!id) {
+      logger.err(`Fallback failed for socket id ${socket.id}.`);
+      return "";
+    }
+    return id;
   } else {
     return id;
   }
