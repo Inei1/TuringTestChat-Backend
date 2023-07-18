@@ -46,12 +46,12 @@ export const enterQueue = async (data: any,
     if (botInterval) {
       clearInterval(botInterval);
     }
-    // const waitingUser = globalThis.waitingUsers.pop()!;
-    // if (!waitingUser) {
-    //   logger.err("Something went horribly wrong when joining a new user!!!");
-    //   globalThis.waitingUsers.push(waitingUser);
-    // }
-    setTimeout(async () => await joinHumanChat(data.username, newRoomId, socket, io), Math.random() * 3000);
+    const waitingUser = globalThis.waitingUsers.pop()!;
+    if (!waitingUser) {
+      logger.err("Something went horribly wrong when joining a new user!!!");
+      globalThis.waitingUsers.push(waitingUser);
+    }
+    setTimeout(async () => await joinHumanChat(data.username, newRoomId, socket, io, waitingUser), Math.random() * 3000);
   } else {
     // If they didn't join instantly,
     // they will be entered into an empty room where they can be joined at any time.
@@ -82,12 +82,12 @@ export const enterQueue = async (data: any,
     // Create a new room so users can join into humans
     await createEmptyRoom(data.username, newRoomId, socket);
   }
-
 }
 
 const joinHumanChat = async (username: string, newRoomId: string,
   socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,
-  io: SocketServer<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>) => {
+  io: SocketServer<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,
+  waitingUser: WaitingUser) => {
   try {
     const user = await globalThis.collections.users?.findOne(
       { username: username },
@@ -95,8 +95,7 @@ const joinHumanChat = async (username: string, newRoomId: string,
     if (user) {
       // logger.info("New room is queuing like normal");
       logger.info(`Username of joining user is ${user.username}`);
-      if (socket.connected) {
-        const waitingUser = globalThis.waitingUsers.pop()!
+      if (socket.connected && io.sockets.sockets.has(waitingUser.socketId)) {
         if (waitingUser && waitingUser.username === username) {
           // Somehow the waiting user is the same as the joining user.
           // We shouldn't add them to the chat, instead ignore the current action.
@@ -164,6 +163,8 @@ const joinHumanChat = async (username: string, newRoomId: string,
           const user1Goal = getRandomPercent() < 50 ? "Human" : "Bot";
           const user2Goal = user1Goal === "Bot" ? "Human" : getRandomPercent() < 50 ? "Human" : "Bot";
           socket.join(waitingUser.roomId);
+          globalThis.activeRooms.set(socket.id, waitingUser.roomId);
+          globalThis.activeRooms.set(waitingUser.socketId, waitingUser.roomId);
           logger.info(`Room ${waitingUser.roomId} joined`);
           const endChatTime = Date.now() + CHAT_TIME;
           const endResultTime = endChatTime + RESULT_TIME;
@@ -254,10 +255,18 @@ const joinHumanChat = async (username: string, newRoomId: string,
             socket.disconnect();
             await globalThis.collections.pastChatSessions?.insertOne(newRoom!);
             await globalThis.collections.chatSessions?.deleteOne(newRoom!);
+            activeRooms.delete(newRoom?.user1.socketId!);
+            activeRooms.delete(newRoom?.user2.socketId!);
           }, CHAT_TIME + RESULT_TIME);
         }
+      } else if (!socket.connected) {
+        logger.warn(`Joining user ${socket.id} already disconnected, cannot join them.`);
+        globalThis.waitingUsers.push(waitingUser);
+      } else if (!io.sockets.sockets.has(waitingUser.socketId)) {
+        logger.warn(`Waiting user ${socket.id} already disconnected, cannot join them.`);
+        createEmptyRoom(username, newRoomId, socket);
       } else {
-        logger.warn(`Joining user already disconnected, cannot join them.`);
+        logger.err("An unknown error occured on when checking for socket connectivity.");
       }
     } else {
       logger.err(`username ${username} not found when attempting to join a game`)
@@ -355,6 +364,7 @@ const joinBotChat = async (username: string, newRoomId: string,
         logger.err(error);
       }
       socket.join(newRoomId);
+      globalThis.activeRooms.set(socket.id, newRoomId);
       socket.emit("foundChat", {
         endChatTime: endChatTime,
         endResultTime: endResultTime,
@@ -407,6 +417,7 @@ const joinBotChat = async (username: string, newRoomId: string,
         socket.disconnect();
         await globalThis.collections.pastChatSessions?.insertOne(newRoom!);
         await globalThis.collections.chatSessions?.deleteOne(newRoom!);
+        activeRooms.delete(socket.id);
       }, CHAT_TIME + RESULT_TIME);
     } else {
       logger.err(`User ${username} not found when trying to join bot chat.`);

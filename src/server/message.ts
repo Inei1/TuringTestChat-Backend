@@ -16,7 +16,7 @@ export const message = async (data: any,
     { id: id }
   );
   if (!room) {
-    logger.err(`room not found with name=${data.name}, text=${data.text}, socket id=${socket.id}, timestamp=${Date.now()}. Creating a new room.`);
+    logger.err(`Room not found with name=${data.name}, text=${data.text}, socket id=${socket.id}, timestamp=${Date.now()}.`);
   }
   const sendingUser = room?.user1.name === data.name ? room?.user1 : room?.user2;
   const receivingUser = room?.user1.name !== data.name ? room?.user1 : room?.user2;

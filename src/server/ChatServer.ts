@@ -20,8 +20,8 @@ import { message } from './message';
 import { enterQueue } from './enterQueue';
 import { getRoomId } from './getRoomId';
 import SettingsController from '../controllers/SettingsController';
-import cors = require('cors');
 import { instrument } from '@socket.io/admin-ui';
+import { checkActive } from './checkActive';
 
 const LocalStrategy = passportLocal.Strategy;
 const GoogleStrategy = passportGoogle.Strategy;
@@ -133,6 +133,7 @@ class ChatServer extends Server {
       this.app.get('*', (req, res) => res.send(msg));
     }
     globalThis.waitingUsers = [];
+    globalThis.activeRooms = new Map<string, string>();
   }
 
   httpsOptions = {
@@ -154,7 +155,7 @@ class ChatServer extends Server {
         username: "thinker951",
         password: process.env.SOCKET_IO_ADMIN_PASSWORD!,
       },
-      mode: "development",
+      mode: process.env.NODE_ENV === "production" ? "production" : "development",
     })
 
     const wrap = (middleware: any) => (socket: any, next: any) => middleware(socket.request, {}, next);
@@ -183,8 +184,17 @@ class ChatServer extends Server {
 
       socket.on("typingStop", () => socket.broadcast.to(getRoomId(socket)).emit("typingResponse", ""));
 
+      socket.on("checkActive", () => checkActive(socket, io));
+
       socket.on("disconnecting", async () => {
+        globalThis.waitingUsers = globalThis.waitingUsers.filter((user) => {
+          return user.socketId !== socket.id;
+        });
         const id = getRoomId(socket);
+        if (id === "") {
+          logger.warn("No room found for existing user's disconnection. " +
+            "This might be because they cancelled chat before finding a room.");
+        }
         const room = await globalThis.collections.chatSessions?.findOne(
           { id: id }
         );
@@ -299,9 +309,6 @@ class ChatServer extends Server {
             );
           }
         }
-        globalThis.waitingUsers = globalThis.waitingUsers.filter((user) => {
-          return user.roomId !== id;
-        });
       });
 
       socket.on("disconnect", () => {
