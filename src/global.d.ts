@@ -14,5 +14,4 @@ declare global {
     passwordResetTokens?: Collection<PasswordResetTokens>,
   };
   var waitingUsers: WaitingUser[];
-  var activeRooms: Map<string, string>;
 }

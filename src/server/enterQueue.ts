@@ -101,7 +101,7 @@ const joinHumanChat = async (username: string, newRoomId: string,
           logger.warn(`${waitingUser.username} attempted to join a room with themselves.`);
         } else if (!waitingUser) {
           logger.warn(`Waiting user already disconnected, cannot join them.`);
-          createEmptyRoom(username, newRoomId, socket);
+          await createEmptyRoom(username, newRoomId, socket);
         } else {
           try {
             const otherUser = await globalThis.collections.users?.findOne(
@@ -161,9 +161,7 @@ const joinHumanChat = async (username: string, newRoomId: string,
           const user1Start = getRandomPercent() < 50;
           const user1Goal = getRandomPercent() < 50 ? "Human" : "Bot";
           const user2Goal = user1Goal === "Bot" ? "Human" : getRandomPercent() < 50 ? "Human" : "Bot";
-          socket.join(waitingUser.roomId);
-          globalThis.activeRooms.set(socket.id, waitingUser.roomId);
-          globalThis.activeRooms.set(waitingUser.socketId, waitingUser.roomId);
+          await socket.join(waitingUser.roomId);
           logger.info(`Room ${waitingUser.roomId} joined`);
           const endChatTime = Date.now() + CHAT_TIME;
           const endResultTime = endChatTime + RESULT_TIME;
@@ -254,8 +252,6 @@ const joinHumanChat = async (username: string, newRoomId: string,
             socket.disconnect();
             await globalThis.collections.pastChatSessions?.insertOne(newRoom!);
             await globalThis.collections.chatSessions?.deleteOne(newRoom!);
-            globalThis.activeRooms.delete(newRoom?.user1.socketId!);
-            globalThis.activeRooms.delete(newRoom?.user2.socketId!);
           }, CHAT_TIME + RESULT_TIME);
         }
       } else if (!socket.connected) {
@@ -263,7 +259,7 @@ const joinHumanChat = async (username: string, newRoomId: string,
         globalThis.waitingUsers.push(waitingUser);
       } else if (!io.sockets.sockets.has(waitingUser.socketId)) {
         logger.warn(`Waiting user ${socket.id} already disconnected, cannot join them.`);
-        createEmptyRoom(username, newRoomId, socket);
+        await createEmptyRoom(username, newRoomId, socket);
       } else {
         logger.err("An unknown error occured on when checking for socket connectivity.");
       }
@@ -362,8 +358,7 @@ const joinBotChat = async (username: string, newRoomId: string,
       } catch (error) {
         logger.err(error);
       }
-      socket.join(newRoomId);
-      globalThis.activeRooms.set(socket.id, newRoomId);
+      await socket.join(newRoomId);
       socket.emit("foundChat", {
         endChatTime: endChatTime,
         endResultTime: endResultTime,
@@ -416,7 +411,6 @@ const joinBotChat = async (username: string, newRoomId: string,
         socket.disconnect();
         await globalThis.collections.pastChatSessions?.insertOne(newRoom!);
         await globalThis.collections.chatSessions?.deleteOne(newRoom!);
-        globalThis.activeRooms.delete(socket.id);
       }, CHAT_TIME + RESULT_TIME);
     } else {
       logger.err(`User ${username} not found when trying to join bot chat.`);
@@ -430,7 +424,6 @@ const createEmptyRoom = async (username: string, newRoomId: string,
   socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>) => {
   logger.info(`Creating a new room for user ${username}`);
   globalThis.waitingUsers.push({ roomId: newRoomId, username: username, socketId: socket.id });
-  globalThis.activeRooms.set(socket.id, newRoomId);
-  socket.join(newRoomId);
+  await socket.join(newRoomId);
   logger.info(`Created new empty room ${newRoomId}`);
 }

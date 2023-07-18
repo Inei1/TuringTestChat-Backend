@@ -133,7 +133,6 @@ class ChatServer extends Server {
       this.app.get('*', (req, res) => res.send(msg));
     }
     globalThis.waitingUsers = [];
-    globalThis.activeRooms = new Map<string, string>();
   }
 
   httpsOptions = {
@@ -190,7 +189,6 @@ class ChatServer extends Server {
         globalThis.waitingUsers = globalThis.waitingUsers.filter((user) => {
           return user.socketId !== socket.id;
         });
-        globalThis.activeRooms.delete(socket.id);
         const id = getRoomId(socket);
         if (id === "") {
           logger.warn("No room found for existing user's disconnection. " +
