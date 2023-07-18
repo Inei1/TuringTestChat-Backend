@@ -10,7 +10,6 @@ import { OpenAIApi } from "openai";
 import { getRandomCharactersPerSecond } from "./getRandomCharactersPerSecond";
 import { clearInterval } from "timers";
 import { sendBotMessage } from "./sendBotMessage";
-import { getRandomInstaJoin } from "./getRandomInstaJoin";
 import { WaitingUser } from "src/types";
 
 const CHAT_TIME = 150000;
@@ -40,7 +39,7 @@ export const enterQueue = async (data: any,
     if (botInterval) {
       clearInterval(botInterval);
     }
-    setTimeout(async () => await joinBotChat(data.username, newRoomId, socket, io, openai), getRandomInstaJoin());
+    await joinBotChat(data.username, newRoomId, socket, io, openai);
   } else if (globalThis.waitingUsers.length > 0) {
     // if there is someone else waiting currently, join them
     if (botInterval) {
@@ -51,7 +50,7 @@ export const enterQueue = async (data: any,
       logger.err("Something went horribly wrong when joining a new user!!!");
       globalThis.waitingUsers.push(waitingUser);
     }
-    setTimeout(async () => await joinHumanChat(data.username, newRoomId, socket, io, waitingUser), Math.random() * 3000);
+    await joinHumanChat(data.username, newRoomId, socket, io, waitingUser);
   } else {
     // If they didn't join instantly,
     // they will be entered into an empty room where they can be joined at any time.
