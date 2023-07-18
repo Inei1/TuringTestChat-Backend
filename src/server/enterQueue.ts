@@ -164,7 +164,6 @@ const joinHumanChat = async (username: string, newRoomId: string,
           const user2Goal = user1Goal === "Bot" ? "Human" : getRandomPercent() < 50 ? "Human" : "Bot";
           socket.join(waitingUser.roomId);
           globalThis.activeRooms.set(socket.id, waitingUser.roomId);
-          globalThis.activeRooms.set(waitingUser.socketId, waitingUser.roomId);
           logger.info(`Room ${waitingUser.roomId} joined`);
           const endChatTime = Date.now() + CHAT_TIME;
           const endResultTime = endChatTime + RESULT_TIME;
@@ -364,7 +363,6 @@ const joinBotChat = async (username: string, newRoomId: string,
         logger.err(error);
       }
       socket.join(newRoomId);
-      globalThis.activeRooms.set(socket.id, newRoomId);
       socket.emit("foundChat", {
         endChatTime: endChatTime,
         endResultTime: endResultTime,
@@ -431,6 +429,7 @@ const createEmptyRoom = async (username: string, newRoomId: string,
   socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>) => {
   logger.info(`Creating a new room for user ${username}`);
   globalThis.waitingUsers.push({ roomId: newRoomId, username: username, socketId: socket.id });
+  globalThis.activeRooms.set(socket.id, newRoomId);
   socket.join(newRoomId);
   logger.info(`Created new empty room ${newRoomId}`);
 }

@@ -155,7 +155,7 @@ class ChatServer extends Server {
         username: "thinker951",
         password: process.env.SOCKET_IO_ADMIN_PASSWORD!,
       },
-      mode: process.env.NODE_ENV === "production" ? "production" : "development",
+      mode: process.env.NODE_ENV === "production" ? "development" : "development",
     })
 
     const wrap = (middleware: any) => (socket: any, next: any) => middleware(socket.request, {}, next);
@@ -190,6 +190,7 @@ class ChatServer extends Server {
         globalThis.waitingUsers = globalThis.waitingUsers.filter((user) => {
           return user.socketId !== socket.id;
         });
+        globalThis.activeRooms.delete(socket.id);
         const id = getRoomId(socket);
         if (id === "") {
           logger.warn("No room found for existing user's disconnection. " +
