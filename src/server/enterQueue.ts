@@ -164,6 +164,7 @@ const joinHumanChat = async (username: string, newRoomId: string,
           const user2Goal = user1Goal === "Bot" ? "Human" : getRandomPercent() < 50 ? "Human" : "Bot";
           socket.join(waitingUser.roomId);
           globalThis.activeRooms.set(socket.id, waitingUser.roomId);
+          globalThis.activeRooms.set(waitingUser.socketId, waitingUser.roomId);
           logger.info(`Room ${waitingUser.roomId} joined`);
           const endChatTime = Date.now() + CHAT_TIME;
           const endResultTime = endChatTime + RESULT_TIME;
@@ -254,8 +255,8 @@ const joinHumanChat = async (username: string, newRoomId: string,
             socket.disconnect();
             await globalThis.collections.pastChatSessions?.insertOne(newRoom!);
             await globalThis.collections.chatSessions?.deleteOne(newRoom!);
-            activeRooms.delete(newRoom?.user1.socketId!);
-            activeRooms.delete(newRoom?.user2.socketId!);
+            globalThis.activeRooms.delete(newRoom?.user1.socketId!);
+            globalThis.activeRooms.delete(newRoom?.user2.socketId!);
           }, CHAT_TIME + RESULT_TIME);
         }
       } else if (!socket.connected) {
@@ -363,6 +364,7 @@ const joinBotChat = async (username: string, newRoomId: string,
         logger.err(error);
       }
       socket.join(newRoomId);
+      globalThis.activeRooms.set(socket.id, newRoomId);
       socket.emit("foundChat", {
         endChatTime: endChatTime,
         endResultTime: endResultTime,
@@ -415,7 +417,7 @@ const joinBotChat = async (username: string, newRoomId: string,
         socket.disconnect();
         await globalThis.collections.pastChatSessions?.insertOne(newRoom!);
         await globalThis.collections.chatSessions?.deleteOne(newRoom!);
-        activeRooms.delete(socket.id);
+        globalThis.activeRooms.delete(socket.id);
       }, CHAT_TIME + RESULT_TIME);
     } else {
       logger.err(`User ${username} not found when trying to join bot chat.`);
