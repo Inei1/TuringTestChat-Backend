@@ -254,7 +254,7 @@ const joinHumanChat = async (username: string, newRoomId: string,
               await globalThis.collections.pastChatSessions?.insertOne(newRoom!);
               await globalThis.collections.chatSessions?.deleteOne(newRoom!);
             } else {
-              logger.err(`Room not found trying to move chat session to past session`);
+              logger.warn(`Room not found trying to move chat session to past session`);
             }
           }, CHAT_TIME + RESULT_TIME);
         }
@@ -417,7 +417,7 @@ const joinBotChat = async (username: string, newRoomId: string,
           await globalThis.collections.pastChatSessions?.insertOne(newRoom!);
           await globalThis.collections.chatSessions?.deleteOne(newRoom!);
         } else {
-          logger.err(`Room not found trying to move chat session to past session`);
+          logger.warn(`Room not found trying to move chat session to past session`);
         }
       }, CHAT_TIME + RESULT_TIME);
     } else {

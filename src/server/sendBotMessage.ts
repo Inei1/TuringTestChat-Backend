@@ -81,7 +81,7 @@ export const sendBotMessage = async (botUser: string,
     // logger.info(`Bot message successfully scheduled in room ${id}`);
   } catch (error) {
     logger.err(error);
-    // Remove add points to otherLeft user
+    // Add points to otherLeft user
     io.to(room?.id).emit("otherLeft");
   }
 }
