@@ -250,8 +250,12 @@ const joinHumanChat = async (username: string, newRoomId: string,
               logger.warn(`Room ${waitingUser.roomId} was already deleted.`);
             }
             socket.disconnect();
-            await globalThis.collections.pastChatSessions?.insertOne(newRoom!);
-            await globalThis.collections.chatSessions?.deleteOne(newRoom!);
+            if (newRoom) {
+              await globalThis.collections.pastChatSessions?.insertOne(newRoom!);
+              await globalThis.collections.chatSessions?.deleteOne(newRoom!);
+            } else {
+              logger.err(`Room not found trying to move chat session to past session`);
+            }
           }, CHAT_TIME + RESULT_TIME);
         }
       } else if (!socket.connected) {
@@ -409,8 +413,12 @@ const joinBotChat = async (username: string, newRoomId: string,
           logger.info(`Room ${newRoomId} was already deleted.`);
         }
         socket.disconnect();
-        await globalThis.collections.pastChatSessions?.insertOne(newRoom!);
-        await globalThis.collections.chatSessions?.deleteOne(newRoom!);
+        if (newRoom) {
+          await globalThis.collections.pastChatSessions?.insertOne(newRoom!);
+          await globalThis.collections.chatSessions?.deleteOne(newRoom!);
+        } else {
+          logger.err(`Room not found trying to move chat session to past session`);
+        }
       }, CHAT_TIME + RESULT_TIME);
     } else {
       logger.err(`User ${username} not found when trying to join bot chat.`);

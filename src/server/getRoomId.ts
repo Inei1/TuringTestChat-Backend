@@ -4,7 +4,9 @@ import logger from 'jet-logger';
 
 export const getRoomId = (socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>) => {
   let id = "";
-  socket.rooms.forEach(async (socketRoom) => {
+  // Note: if a user attempts to join multiple rooms, this won't cause a bug.
+  // Each new room is joined with a new socket, so the old rooms won't show.
+  socket.rooms.forEach((socketRoom) => {
     // Check if the room is a uuid. Sockets always join a room by default, but we don't use it.
     // Attempting to find a room with a socket that isn't a uuid will fail.
     if (socketRoom.match(/^[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}$/gi)) {

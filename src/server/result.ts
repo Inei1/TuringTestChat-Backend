@@ -2,6 +2,7 @@ import { Socket } from "socket.io";
 import { getRoomId } from "./getRoomId";
 import logger from 'jet-logger';
 import { DefaultEventsMap } from "socket.io/dist/typed-events";
+import { getRandomPercent } from "./getRandomPercent";
 
 const MAJOR_WRONG_POINTS = -3;
 const MINOR_WRONG_POINTS = -1;
@@ -18,7 +19,7 @@ export const result = async (data: any,
   let endTime = await globalThis.collections.chatSessions?.findOne(
     { id: id }
   );
-  // TODO: check if this is really necessary
+
   if (!endTime) {
     pastSession = true;
     endTime = await globalThis.collections.pastChatSessions?.findOne(
@@ -26,11 +27,90 @@ export const result = async (data: any,
     );
   }
   if (!endTime) {
-    logger.err(`Did not find a chat session to compute the result for. Data is name=${data.name}, result=${data.result}, socket id is ${socket.id} `);
-  }
-  // logger.info("Room " + id + " found for result");
-  // add another second to send response
-  if (endTime!.endResultTime + 1000 >= Date.now()) {
+    logger.warn(`Did not find a chat session to compute the result for. Data is name=${data.name}, result=${data.result}, socket id is ${socket.id}. 
+    A random response is being generated for the disconnected user.`);
+
+    const userData = await globalThis.collections.users?.findOne({
+      username: data.username
+    });
+
+    if (userData) {
+      let otherGoal = "";
+      let other = "";
+      let selfPoints = 0;
+      if (data.result === "Definitely a human") {
+        other = "Human";
+        selfPoints = MAJOR_CORRECT_POINTS;
+      } else if (data.result === "Possibly a human") {
+        other = "Human";
+        selfPoints = MINOR_CORRECT_POINTS;
+      } else if (data.result === "Unknown") {
+        other = getRandomPercent() < 50 ? "Human" : "Bot";
+        selfPoints = UNKNOWN_SELF_POINTS;
+      } else if (data.result === "Possibly a bot") {
+        other = "Bot";
+        selfPoints = MINOR_CORRECT_POINTS;
+      } else if (data.result === "Definitely a bot") {
+        other = "Bot";
+        selfPoints = MAJOR_CORRECT_POINTS;
+      } else {
+        logger.err("Something went seriously wrong when trying to make fake results!");
+        other = "Human";
+        selfPoints = 0;
+      }
+      socket.emit("selfResult", {
+        result: data.result,
+        points: selfPoints,
+        other: other,
+        otherGoal: otherGoal
+      });
+
+      // Since we have no idea who the other person is, just make something up.
+      const randomOtherResult = getRandomPercent();
+      let otherResult = "";
+      let otherPoints = 0;
+      if (randomOtherResult < 15) {
+        otherResult = "Definitely a human";
+        otherPoints = MAJOR_WRONG_POINTS;
+      } else if (randomOtherResult < 30) {
+        otherResult = "Possibly a human";
+        otherPoints = MINOR_WRONG_POINTS;
+      } else if (randomOtherResult < 50) {
+        otherResult = "Unknown";
+        otherPoints = UNKNOWN_OTHER_POINTS;
+      } else if (randomOtherResult < 75) {
+        otherResult = "Possibly a bot";
+        otherPoints = MINOR_CORRECT_POINTS;
+      } else {
+        otherResult = "Definitely a bot";
+        otherPoints = MAJOR_CORRECT_POINTS;
+      }
+      socket.emit("otherResult", {
+        result: otherResult,
+        points: otherPoints,
+      });
+      // we need to remove a loss from the user so that it can get added back to 0 on disconnect.
+      await globalThis.collections.users?.updateOne(
+        { username: data.username },
+        {
+          $set: {
+            deceptionWins: otherPoints > 0 ? userData.deceptionWins! + 1 : userData.deceptionWins,
+            deceptionLosses: otherPoints > 0 ? userData.deceptionLosses! - 1 : userData.deceptionLosses,
+            detectionWins: userData.detectionWins! + 1,
+            detectionLosses: userData.detectionLosses! - 1,
+            detection: userData.detection! + selfPoints,
+            deception: userData.deception! + otherPoints,
+          }
+        }
+      );
+    } else {
+      logger.err(`${data.name} not found when trying to make fake results`);
+    }
+
+    // let the socket disconnect deal with the other user
+    socket.disconnect();
+    // add another second to send response
+  } else if (endTime!.endResultTime + 1000 >= Date.now()) {
     // TODO: authenticate user and socket
     let otherPoints = 0;
     let selfPoints = 0;

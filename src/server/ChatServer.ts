@@ -154,7 +154,7 @@ class ChatServer extends Server {
         username: "thinker951",
         password: process.env.SOCKET_IO_ADMIN_PASSWORD!,
       },
-      mode: process.env.NODE_ENV === "production" ? "development" : "development",
+      mode: process.env.NODE_ENV === "production" ? "production" : "development",
     })
 
     const wrap = (middleware: any) => (socket: any, next: any) => middleware(socket.request, {}, next);
@@ -183,7 +183,7 @@ class ChatServer extends Server {
 
       socket.on("typingStop", () => socket.broadcast.to(getRoomId(socket)).emit("typingResponse", ""));
 
-      socket.on("checkActive", () => checkActive(socket, io));
+      socket.on("checkActive", async () => await checkActive(socket, io));
 
       socket.on("disconnecting", async () => {
         globalThis.waitingUsers = globalThis.waitingUsers.filter((user) => {
