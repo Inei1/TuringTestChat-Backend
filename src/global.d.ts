@@ -12,6 +12,6 @@ declare global {
     chatSessions?: Collection<ChatSession>,
     pastChatSessions?: Collection<ChatSession>,
     passwordResetTokens?: Collection<PasswordResetTokens>,
+    waitingUsers: Collection<WaitingUser>,
   };
-  var waitingUsers: WaitingUser[];
 }

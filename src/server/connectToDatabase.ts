@@ -1,5 +1,5 @@
 import { Collection, Db, MongoClient } from "mongodb";
-import { ChatSession, PasswordResetTokens, UserElements, WaitlistElements } from "src/types";
+import { ChatSession, PasswordResetTokens, UserElements, WaitingUser, WaitlistElements } from "src/types";
 import * as dotenv from "dotenv";
 import logger from "jet-logger";
 
@@ -19,11 +19,14 @@ export async function connectToDatabase() {
   logger.imp(`Successfully connected to database ${db.databaseName}`);
   const passwordResetTokensCollection: Collection<PasswordResetTokens> =
     db.collection<PasswordResetTokens>(process.env.PASSWORD_RESET_TOKENS_COLLECTION_NAME!);
+  const waitingUsersCollection: Collection<WaitingUser> =
+    db.collection<WaitingUser>(process.env.WAITING_USERS_COLLECTION_NAME!);
   return {
     users: usersCollection,
     waitlist: waitlistCollection,
     chatSessions: chatSessionsCollection,
     pastChatSessions: pastChatSessionsCollection,
-    passwordResetTokens: passwordResetTokensCollection
+    passwordResetTokens: passwordResetTokensCollection,
+    waitingUsers: waitingUsersCollection,
   };
 }

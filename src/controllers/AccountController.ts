@@ -14,9 +14,9 @@ class AccountController {
 
   @Post("register")
   @Middleware([
-    check("username").notEmpty().withMessage("Username must not be empty").escape(),
-    check("password").isLength({ min: 6 }).withMessage("Password must be at least 6 characters long").escape(),
-    check("email").isEmail().withMessage("Invalid email address").escape()
+    check("username").isLength({ max: 64 }).notEmpty().withMessage("Username must be between 1 and 64 characters long").escape(),
+    check("password").isLength({ min: 6, max: 64 }).withMessage("Password must be between 6 and 64 characters long").escape(),
+    check("email").isLength({ max: 254 }).isEmail().withMessage("Invalid email address").escape()
   ])
   private async registerUser(req: Request, res: Response) {
     const result = validationResult(req);
