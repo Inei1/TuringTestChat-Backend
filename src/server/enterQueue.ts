@@ -254,7 +254,7 @@ const joinHumanChat = async (username: string, newRoomId: string,
         );
         if (newRoom) {
           //logger.info(`Room ${waitingUser.roomId} is calculating result`);
-          if (newRoom?.user1.result === "" && newRoom?.user1.active) {
+          if ((!newRoom.user1.result || newRoom?.user1.result === "") && newRoom?.user1.active) {
             // logger.info("User1 in chat " + id + " did not select");
             io.to(newRoom?.user2.socketId).emit("noResult", { otherGoal: newRoom.user1.goal });
             io.to(newRoom?.user1.socketId).emit("selfResult", {
@@ -266,7 +266,7 @@ const joinHumanChat = async (username: string, newRoomId: string,
             // logger.info(`${newRoom?.user1.username} in chat ${id} selected ${newRoom?.user1.result}`);
             io.to(newRoom!.user2.socketId).emit("completeChat");
           }
-          if (newRoom?.user2.result === "" && newRoom?.user2.active) {
+          if ((!newRoom.user2.result || newRoom?.user2.result === "") && newRoom?.user2.active) {
             // logger.info("User2 in chat " + id + " did not select");
             io.to(newRoom?.user1.socketId).emit("noResult", { otherGoal: newRoom.user2.goal });
             io.to(newRoom?.user2.socketId).emit("selfResult", {

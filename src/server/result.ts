@@ -109,7 +109,7 @@ export const result = async (data: any,
         }
       );
     } else {
-      logger.err(`${data.name} not found when trying to make fake results`);
+      logger.warn(`${data.name} not found when trying to make fake results`);
     }
 
     // let the socket disconnect deal with the other user

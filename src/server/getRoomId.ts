@@ -14,8 +14,5 @@ export const getRoomId = (socket: Socket<DefaultEventsMap, DefaultEventsMap, Def
       id = socketRoom;
     }
   });
-  if (id.length === 0) {
-    logger.warn(`getRoomId failed to find a room id (socket id=${socket.id})`);
-  }
   return id;
 }

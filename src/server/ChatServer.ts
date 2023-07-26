@@ -199,10 +199,6 @@ class ChatServer extends Server {
         }
 
         const id = getRoomId(socket);
-        if (id === "") {
-          logger.warn("No room found for existing user's disconnection. " +
-            "This might be because they canceled chat before finding a room.");
-        }
         const room = await globalThis.collections.chatSessions?.findOne(
           { id: id }
         );
