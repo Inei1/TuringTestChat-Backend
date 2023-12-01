@@ -1,14 +1,6 @@
-Turing Test Chat License
+MIT License
 
 Copyright (c) 2023 Neil Moon
-
-This license is a slightly modified version of the MIT license. The following
-term is the only addition to the MIT license. Anyone who hosts the code contained
-in the TuringTestChat frontend and backend is required to pay 50% of net profit
-(profits minus expenses). In case of conflict between this condition and the terms of
-the MIT license, this condition takes priority.
-
-The following is the regular MIT license:
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
